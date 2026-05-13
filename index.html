@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CryptoSim — Portfolio Simulator</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg0:   #07091a;
+      --bg1:   #0d1126;
+      --bg2:   #111930;
+      --bg3:   #172039;
+      --border: #1c2b47;
+      --bord2: #253656;
+      --accent: #3b82f6;
+      --accentH:#2563eb;
+      --glow:  rgba(59,130,246,.14);
+      --txt:   #f0f4fc;
+      --txt2:  #8ba3c7;
+      --txt3:  #4f6a90;
+      --green: #10b981;
+      --gbg:   rgba(16,185,129,.10);
+      --red:   #ef4444;
+      --rbg:   rgba(239,68,68,.10);
+      --gold:  #f59e0b;
+      --sim:   #dc2626;
+    }
+
+    body {
+      font-family:'Inter',system-ui,sans-serif;
+      background:var(--bg0);
+      color:var(--txt);
+      min-height:100vh;
+      -webkit-font-smoothing:antialiased;
+    }
+
+    /* ── SCREENS ── */
+    .screen { display:none; min-height:100vh; flex-direction:column; }
+    .screen.active { display:flex; }
+
+    /* ── SIM BANNER ── */
+    .sim-banner {
+      background:rgba(220,38,38,.10);
+      border-bottom:1px solid rgba(220,38,38,.25);
+      padding:7px 20px;
+      text-align:center;
+      font-size:11.5px;
+      font-weight:600;
+      color:#fca5a5;
+      letter-spacing:.05em;
+      text-transform:uppercase;
+    }
+    .sim-pill {
+      display:inline-flex;
+      align-items:center;
+      gap:4px;
+      background:var(--sim);
+      color:#fff;
+      font-size:9px;
+      font-weight:800;
+      letter-spacing:.12em;
+      padding:2px 7px;
+      border-radius:4px;
+      text-transform:uppercase;
+      vertical-align:middle;
+    }
+
+    /* ── TOP NAV ── */
+    .topnav {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:14px 28px;
+      border-bottom:1px solid var(--border);
+      background:var(--bg1);
+    }
+    .logo {
+      display:flex;
+      align-items:center;
+      gap:10px;
+      font-size:19px;
+      font-weight:800;
+      letter-spacing:-.03em;
+    }
+    .logo-box {
+      width:34px; height:34px;
+      background:linear-gradient(135deg,#3b82f6,#8b5cf6);
+      border-radius:9px;
+      display:flex; align-items:center; justify-content:center;
+      font-size:17px;
+    }
+
+    /* ── STEP PROGRESS ── */
+    .prog {
+      display:flex;
+      align-items:center;
+      gap:6px;
+      margin-bottom:28px;
+    }
+    .prog-dot {
+      width:7px; height:7px;
+      border-radius:50%;
+      background:var(--bord2);
+      transition:all .3s;
+    }
+    .prog-dot.done { background:var(--green); }
+    .prog-dot.active { width:22px; border-radius:4px; background:var(--accent); }
+
+    /* ── CENTERED CONTAINERS ── */
+    .center-wrap {
+      flex:1;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:36px 20px;
+    }
+    .flow-card {
+      background:var(--bg2);
+      border:1px solid var(--border);
+      border-radius:20px;
+      padding:40px 44px;
+      width:100%;
+      max-width:560px;
+    }
+    @media(max-width:600px){
+      .flow-card { padding:28px 22px; }
+    }
+
+    /* ── WELCOME ── */
+    .welcome-icon {
+      width:72px; height:72px;
+      background:linear-gradient(135deg,#3b82f6,#8b5cf6);
+      border-radius:18px;
+      display:flex; align-items:center; justify-content:center;
+      font-size:32px;
+      margin:0 auto 22px;
+    }
+    .welcome-title {
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:10px;
+      font-size:26px;
+      font-weight:900;
+      letter-spacing:-.03em;
+      margin-bottom:8px;
+    }
+    .welcome-sub {
+      text-align:center;
+      color:var(--txt2);
+      font-size:14.5px;
+      margin-bottom:28px;
+      line-height:1.6;
+    }
+    .disclaimer {
+      background:rgba(251,191,36,.07);
+      border:1px solid rgba(251,191,36,.22);
+      border-radius:10px;
+      padding:13px 15px;
+      font-size:12.5px;
+      color:#fbbf24;
+      margin-bottom:26px;
+      line-height:1.6;
+    }
+
+    /* ── FORMS ── */
+    .fgroup { margin-bottom:18px; }
+    .flabel {
+      display:block;
+      font-size:11px;
+      font-weight:700;
+      color:var(--txt2);
+      text-transform:uppercase;
+      letter-spacing:.07em;
+      margin-bottom:7px;
+    }
+    input[type=text], input[type=number] {
+      width:100%;
+      background:var(--bg0);
+      border:1.5px solid var(--border);
+      border-radius:10px;
+      padding:12px 15px;
+      font-size:15.5px;
+      color:var(--txt);
+      font-family:inherit;
+      outline:none;
+      transition:border-color .2s, box-shadow .2s;
+    }
+    input:focus {
+      border-color:var(--accent);
+      box-shadow:0 0 0 3px var(--glow);
+    }
+    input::placeholder { color:var(--txt3); }
+
+    /* ── BUTTONS ── */
+    .btn {
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:7px;
+      padding:12px 26px;
+      border-radius:10px;
+      font-size:14.5px;
+      font-weight:600;
+      cursor:pointer;
+      border:none;
+      font-family:inherit;
+      transition:all .18s;
+    }
+    .btn-primary {
+      background:var(--accent);
+      color:#fff;
+      width:100%;
+    }
+    .btn-primary:hover { background:var(--accentH); transform:translateY(-1px); box-shadow:0 6px 22px rgba(59,130,246,.3); }
+    .btn-primary:active { transform:none; }
+    .btn-ghost {
+      background:transparent;
+      color:var(--txt2);
+      border:1.5px solid var(--border);
+      padding:10px 18px;
+      font-size:13px;
+    }
+    .btn-ghost:hover { border-color:var(--accent); color:var(--accent); }
+    .btn-back {
+      background:var(--bg3);
+      color:var(--txt2);
+      border:1.5px solid var(--border);
+      padding:12px 20px;
+      font-size:14px;
+    }
+    .btn-back:hover { color:var(--txt); border-color:var(--bord2); }
+    .btn-row { display:flex; gap:10px; margin-top:22px; }
+    .btn-row .btn-primary { flex:1; }
+
+    /* ── STEP CARD ── */
+    .step-label { font-size:11px; font-weight:700; color:var(--accent); text-transform:uppercase; letter-spacing:.08em; margin-bottom:4px; }
+    .step-title { font-size:21px; font-weight:800; letter-spacing:-.02em; margin-bottom:4px; }
+    .step-desc  { font-size:13.5px; color:var(--txt2); margin-bottom:24px; }
+
+    /* ── ASSET GRID ── */
+    .asset-grid {
+      display:grid;
+      grid-template-columns:repeat(auto-fill,minmax(148px,1fr));
+      gap:10px;
+      margin-bottom:20px;
+    }
+    .asset-card {
+      background:var(--bg0);
+      border:2px solid var(--border);
+      border-radius:12px;
+      padding:13px 14px;
+      cursor:pointer;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      user-select:none;
+      transition:border-color .18s, background .18s;
+    }
+    .asset-card:hover { border-color:var(--accent); background:var(--glow); }
+    .asset-card.selected { border-color:var(--accent); background:var(--glow); }
+    .asset-card .check { display:none; width:18px; height:18px; background:var(--accent); border-radius:50%; align-items:center; justify-content:center; font-size:9px; flex-shrink:0; }
+    .asset-card.selected .check { display:flex; }
+    .aimg { width:32px; height:32px; border-radius:50%; object-fit:cover; flex-shrink:0; }
+    .ainfo { flex:1; min-width:0; }
+    .asym  { font-size:13px; font-weight:700; }
+    .aname { font-size:11px; color:var(--txt3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+    .sel-count { font-size:12.5px; color:var(--accent); font-weight:600; margin-bottom:10px; }
+
+    /* ── SEARCH ── */
+    .search-wrap {
+      background:var(--bg0);
+      border:1.5px dashed var(--bord2);
+      border-radius:12px;
+      padding:15px;
+      margin-top:4px;
+    }
+    .search-head { font-size:12.5px; font-weight:600; color:var(--txt2); margin-bottom:10px; }
+    .search-row { display:flex; gap:8px; }
+    .search-row input { flex:1; padding:10px 13px; font-size:14px; }
+    .search-results { margin-top:10px; border-radius:10px; overflow:hidden; border:1px solid var(--border); }
+    .sresult {
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:11px 14px;
+      cursor:pointer;
+      transition:background .15s;
+      border-bottom:1px solid var(--border);
+      font-size:13.5px;
+    }
+    .sresult:last-child { border-bottom:none; }
+    .sresult:hover { background:var(--glow); }
+    .sresult-sym { font-weight:700; }
+    .sresult-name { font-size:12px; color:var(--txt3); }
+    .sresult-add { margin-left:auto; font-size:12px; color:var(--accent); font-weight:600; }
+
+    /* ── AMOUNT LIST ── */
+    .amount-list { display:flex; flex-direction:column; gap:10px; margin-bottom:22px; }
+    .amount-row {
+      display:flex;
+      align-items:center;
+      gap:14px;
+      background:var(--bg0);
+      border:1.5px solid var(--border);
+      border-radius:12px;
+      padding:13px 15px;
+      transition:border-color .18s;
+    }
+    .amount-row:focus-within { border-color:var(--accent); }
+    .amount-asset { display:flex; align-items:center; gap:10px; flex:1; }
+    .amount-input {
+      width:150px;
+      background:var(--bg2);
+      border:1.5px solid var(--border);
+      border-radius:8px;
+      padding:8px 11px;
+      font-size:15px;
+      color:var(--txt);
+      font-family:inherit;
+      text-align:right;
+      outline:none;
+      transition:border-color .18s;
+    }
+    .amount-input:focus { border-color:var(--accent); box-shadow:0 0 0 3px var(--glow); }
+
+    /* ── DASHBOARD ── */
+    .dash-header {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      flex-wrap:wrap;
+      gap:12px;
+      padding:14px 28px;
+      background:var(--bg1);
+      border-bottom:1px solid var(--border);
+    }
+    .user-pill {
+      display:flex;
+      align-items:center;
+      gap:11px;
+    }
+    .avatar {
+      width:38px; height:38px;
+      background:linear-gradient(135deg,#3b82f6,#8b5cf6);
+      border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      font-weight:800; font-size:16px;
+      flex-shrink:0;
+    }
+    .uname  { font-weight:700; font-size:15px; }
+    .ulabel { font-size:11.5px; color:var(--txt3); }
+    .live-badge {
+      display:flex;
+      align-items:center;
+      gap:6px;
+      font-size:11.5px;
+      font-weight:700;
+      color:var(--green);
+      letter-spacing:.04em;
+    }
+    .live-dot {
+      width:7px; height:7px;
+      background:var(--green);
+      border-radius:50%;
+      animation:blink 2s ease-in-out infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:.35;} }
+
+    .dash-body {
+      flex:1;
+      padding:24px 28px 32px;
+      max-width:1180px;
+      margin:0 auto;
+      width:100%;
+    }
+
+    /* ── METRIC CARDS ── */
+    .metrics-row {
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+      gap:14px;
+      margin-bottom:20px;
+    }
+    .mcard {
+      background:var(--bg2);
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:20px 22px;
+    }
+    .mcard.hero {
+      background:linear-gradient(135deg,#0f1a35,#111c36);
+      border-color:rgba(59,130,246,.3);
+    }
+    .mlabel {
+      font-size:10.5px;
+      font-weight:700;
+      color:var(--txt3);
+      text-transform:uppercase;
+      letter-spacing:.07em;
+      margin-bottom:7px;
+    }
+    .mval { font-size:26px; font-weight:900; letter-spacing:-.03em; }
+    .mval.xl { font-size:33px; }
+    .mchange { margin-top:5px; font-size:12.5px; font-weight:600; }
+    .pos { color:var(--green); }
+    .neg { color:var(--red); }
+    .neu { color:var(--txt3); }
+
+    /* ── CONTENT GRID ── */
+    .cgrid {
+      display:grid;
+      grid-template-columns:1fr 320px;
+      gap:16px;
+    }
+    @media(max-width:860px){ .cgrid { grid-template-columns:1fr; } }
+
+    /* ── CARD ── */
+    .card {
+      background:var(--bg2);
+      border:1px solid var(--border);
+      border-radius:16px;
+      overflow:hidden;
+    }
+    .card-hd {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:15px 20px;
+      border-bottom:1px solid var(--border);
+    }
+    .card-title { font-size:14px; font-weight:700; }
+    .last-upd   { font-size:11px; color:var(--txt3); }
+
+    /* ── HOLDINGS TABLE ── */
+    .htable { width:100%; border-collapse:collapse; }
+    .htable th {
+      padding:11px 16px;
+      text-align:right;
+      font-size:10.5px;
+      font-weight:700;
+      color:var(--txt3);
+      text-transform:uppercase;
+      letter-spacing:.06em;
+      background:var(--bg1);
+    }
+    .htable th:first-child { text-align:left; }
+    .htable td {
+      padding:13px 16px;
+      font-size:13.5px;
+      text-align:right;
+      border-bottom:1px solid var(--border);
+    }
+    .htable td:first-child { text-align:left; }
+    .htable tr:last-child td { border-bottom:none; }
+    .htable tr:hover td { background:rgba(255,255,255,.018); }
+
+    .hold-asset { display:flex; align-items:center; gap:11px; }
+    .himg { width:30px; height:30px; border-radius:50%; object-fit:cover; }
+    .hsym  { font-size:13.5px; font-weight:700; }
+    .hname { font-size:11px; color:var(--txt3); }
+
+    .cbadge {
+      display:inline-flex;
+      align-items:center;
+      padding:2px 8px;
+      border-radius:6px;
+      font-size:11.5px;
+      font-weight:700;
+    }
+    .cbadge.pos { background:var(--gbg); color:var(--green); }
+    .cbadge.neg { background:var(--rbg); color:var(--red); }
+
+    .abar { height:3px; background:var(--bg1); border-radius:2px; margin-top:4px; }
+    .abar-fill { height:100%; border-radius:2px; transition:width .6s ease; }
+
+    /* ── CHART PANEL ── */
+    .chart-pad { padding:22px; display:flex; flex-direction:column; align-items:center; }
+    .chart-wrap { width:190px; height:190px; }
+    .legend { width:100%; margin-top:18px; }
+    .litem {
+      display:flex;
+      align-items:center;
+      padding:6px 0;
+      font-size:12.5px;
+      border-bottom:1px solid var(--border);
+    }
+    .litem:last-child { border-bottom:none; }
+    .ldot { width:9px; height:9px; border-radius:3px; flex-shrink:0; }
+    .lsym { font-weight:700; flex:1; margin-left:7px; }
+    .lpct { color:var(--txt2); font-weight:500; }
+
+    /* ── DASH FOOTER ── */
+    .dash-foot {
+      padding:14px 28px;
+      text-align:center;
+      font-size:11px;
+      color:var(--txt3);
+      border-top:1px solid var(--border);
+      line-height:1.7;
+    }
+
+    /* ── LOADING / ERROR ── */
+    .loading {
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      gap:14px; padding:60px 20px;
+      color:var(--txt2); font-size:14px;
+    }
+    .spinner {
+      width:38px; height:38px;
+      border:3px solid var(--border);
+      border-top-color:var(--accent);
+      border-radius:50%;
+      animation:spin .75s linear infinite;
+    }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    hr.div { border:none; border-top:1px solid var(--border); margin:20px 0; }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════
+     SCREEN 1 — WELCOME
+════════════════════════════════════════════ -->
+<div id="s-welcome" class="screen active">
+  <div class="sim-banner">
+    ⚠️ &nbsp;SIMULATOR ONLY — This app does not connect to any blockchain, wallet, or exchange. No real assets are involved.
+  </div>
+
+  <div class="center-wrap">
+    <div class="flow-card" style="text-align:center;">
+      <div class="welcome-icon">📊</div>
+
+      <div class="welcome-title">
+        CryptoSim
+        <span class="sim-pill">Simulator</span>
+      </div>
+
+      <p class="welcome-sub">
+        A professional crypto portfolio display tool.<br>
+        Track hypothetical holdings with live market data.
+      </p>
+
+      <div class="disclaimer">
+        🔒 <strong>No wallet connection required.</strong><br>
+        This tool is for display and simulation purposes only. It never asks for private keys,
+        seed phrases, wallet passwords, or exchange credentials. All holdings are manually
+        entered and entirely simulated.
+      </div>
+
+      <div class="fgroup" style="text-align:left;">
+        <label class="flabel" for="inp-name">Your Display Name</label>
+        <input type="text" id="inp-name" placeholder="e.g. Alex Johnson" maxlength="40"
+               onkeydown="if(event.key==='Enter') step1Next()" />
+      </div>
+
+      <button class="btn btn-primary" onclick="step1Next()">Get Started &rarr;</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════
+     SCREEN 2 — ASSET SELECTION
+════════════════════════════════════════════ -->
+<div id="s-assets" class="screen">
+  <div class="sim-banner">
+    ⚠️ &nbsp;SIMULATOR ONLY — Portfolio values shown are simulated and do not reflect real holdings.
+  </div>
+
+  <div class="center-wrap">
+    <div class="flow-card">
+      <div class="prog">
+        <div class="prog-dot done"></div>
+        <div class="prog-dot active"></div>
+        <div class="prog-dot"></div>
+      </div>
+
+      <div class="step-label">Step 2 of 3</div>
+      <div class="step-title">Choose Your Assets</div>
+      <div class="step-desc">Select the cryptocurrencies you want in your simulated portfolio.</div>
+
+      <div class="sel-count" id="sel-count">0 assets selected</div>
+      <div class="asset-grid" id="asset-grid"></div>
+
+      <hr class="div" />
+
+      <div class="search-wrap">
+        <div class="search-head">🔍 &nbsp;Add a custom asset</div>
+        <div class="search-row">
+          <input type="text" id="custom-q" placeholder="Search by name or symbol (e.g. Polkadot)"
+                 onkeydown="if(event.key==='Enter') doSearch()" />
+          <button class="btn btn-ghost" onclick="doSearch()">Search</button>
+        </div>
+        <div id="search-out"></div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-back" onclick="showScreen('s-welcome')">← Back</button>
+        <button class="btn btn-primary" onclick="step2Next()">Continue →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════
+     SCREEN 3 — AMOUNTS
+════════════════════════════════════════════ -->
+<div id="s-amounts" class="screen">
+  <div class="sim-banner">
+    ⚠️ &nbsp;SIMULATOR ONLY — Enter hypothetical amounts. These are not real assets.
+  </div>
+
+  <div class="center-wrap">
+    <div class="flow-card">
+      <div class="prog">
+        <div class="prog-dot done"></div>
+        <div class="prog-dot done"></div>
+        <div class="prog-dot active"></div>
+      </div>
+
+      <div class="step-label">Step 3 of 3</div>
+      <div class="step-title">Set Your Holdings</div>
+      <div class="step-desc">Enter the simulated amount of each asset in your portfolio.</div>
+
+      <div class="amount-list" id="amount-list"></div>
+
+      <div class="btn-row">
+        <button class="btn btn-back" onclick="showScreen('s-assets')">← Back</button>
+        <button class="btn btn-primary" onclick="step3Next()">Build Portfolio →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════
+     SCREEN 4 — DASHBOARD
+════════════════════════════════════════════ -->
+<div id="s-dash" class="screen">
+  <div class="sim-banner">
+    ⚠️ &nbsp;SIMULATOR ONLY — Prices are real-time market data, but holdings are simulated. This is not a real wallet.
+  </div>
+
+  <div class="dash-header">
+    <div class="logo">
+      <div class="logo-box">📊</div>
+      CryptoSim
+      <span class="sim-pill">Simulator</span>
+    </div>
+
+    <div class="user-pill">
+      <div id="d-avatar" class="avatar">A</div>
+      <div>
+        <div id="d-name" class="uname">—</div>
+        <div class="ulabel">Simulated Portfolio</div>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+      <div class="live-badge">
+        <div class="live-dot"></div>
+        LIVE PRICES
+      </div>
+      <button class="btn btn-ghost" onclick="restart()" style="font-size:12px;padding:7px 14px;">
+        ↩ New Portfolio
+      </button>
+    </div>
+  </div>
+
+  <div id="d-content">
+    <div class="loading">
+      <div class="spinner"></div>
+      <div>Fetching live market prices…</div>
+    </div>
+  </div>
+
+  <div class="dash-foot">
+    Price data from CoinGecko API &nbsp;·&nbsp; Auto-refreshes every 5 seconds &nbsp;·&nbsp;
+    <strong>SIMULATOR ONLY</strong> — Not a real wallet &nbsp;·&nbsp; No blockchain connection
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════
+     JAVASCRIPT
+════════════════════════════════════════════ -->
+<script>
+// ─── PRESET ASSETS ─────────────────────────────────────────────────────────
+const PRESETS = [
+  { id:'bitcoin',      sym:'BTC',  name:'Bitcoin',   img:'https://assets.coingecko.com/coins/images/1/small/bitcoin.png' },
+  { id:'ethereum',     sym:'ETH',  name:'Ethereum',  img:'https://assets.coingecko.com/coins/images/279/small/ethereum.png' },
+  { id:'solana',       sym:'SOL',  name:'Solana',    img:'https://assets.coingecko.com/coins/images/4128/small/solana.png' },
+  { id:'ripple',       sym:'XRP',  name:'XRP',       img:'https://assets.coingecko.com/coins/images/44/small/xrp-symbol-white-128.png' },
+  { id:'cardano',      sym:'ADA',  name:'Cardano',   img:'https://assets.coingecko.com/coins/images/975/small/cardano.png' },
+  { id:'dogecoin',     sym:'DOGE', name:'Dogecoin',  img:'https://assets.coingecko.com/coins/images/5/small/dogecoin.png' },
+  { id:'binancecoin',  sym:'BNB',  name:'BNB',       img:'https://assets.coingecko.com/coins/images/825/small/bnb-icon2_2x.png' },
+];
+
+const COLORS = [
+  '#3b82f6','#8b5cf6','#10b981','#f59e0b','#ef4444',
+  '#06b6d4','#ec4899','#84cc16','#f97316','#a78bfa',
+  '#14b8a6','#e879f9','#fb923c','#34d399','#60a5fa',
+];
+
+// ─── STATE ─────────────────────────────────────────────────────────────────
+const S = {
+  name: '',
+  selected: [],   // [{ id, sym, name, img }]
+  amounts: {},    // { id: number }
+  prices: {},     // { id: { usd, usd_24h_change } }
+  timer: null,
+  chart: null,
+  initialized: false,
+  lastUpd: null,
+};
+
+// ─── NAVIGATION ─────────────────────────────────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+// ─── STEP 1 ─────────────────────────────────────────────────────────────────
+function step1Next() {
+  const v = document.getElementById('inp-name').value.trim();
+  if (!v) { document.getElementById('inp-name').focus(); return; }
+  S.name = v;
+  buildAssetGrid();
+  showScreen('s-assets');
+}
+
+// ─── ASSET GRID ─────────────────────────────────────────────────────────────
+function buildAssetGrid() {
+  const grid = document.getElementById('asset-grid');
+  // Presets + any custom additions
+  const all = [
+    ...PRESETS,
+    ...S.selected.filter(a => !PRESETS.find(p => p.id === a.id)),
+  ];
+  grid.innerHTML = all.map(a => assetCardHTML(a)).join('');
+  updateSelCount();
+}
+
+function assetCardHTML(a) {
+  const on = !!S.selected.find(x => x.id === a.id);
+  return `<div class="asset-card${on?' selected':''}" id="ac-${a.id}" onclick="toggleAsset('${a.id}')">
+    <img class="aimg" src="${a.img}" alt="${a.sym}" onerror="this.style.opacity='.3'">
+    <div class="ainfo">
+      <div class="asym">${a.sym}</div>
+      <div class="aname">${a.name}</div>
+    </div>
+    <div class="check">✓</div>
+  </div>`;
+}
+
+function assetById(id) {
+  return PRESETS.find(a => a.id === id) || S.selected.find(a => a.id === id);
+}
+
+function toggleAsset(id) {
+  const asset = assetById(id);
+  if (!asset) return;
+  const idx = S.selected.findIndex(a => a.id === id);
+  if (idx >= 0) {
+    S.selected.splice(idx, 1);
+  } else {
+    S.selected.push(asset);
+  }
+  const card = document.getElementById(`ac-${id}`);
+  if (card) {
+    const on = !!S.selected.find(a => a.id === id);
+    card.classList.toggle('selected', on);
+    card.querySelector('.check').style.display = on ? 'flex' : 'none';
+  }
+  updateSelCount();
+}
+
+function updateSelCount() {
+  const n = S.selected.length;
+  document.getElementById('sel-count').textContent =
+    n === 0 ? 'No assets selected' : `${n} asset${n > 1 ? 's' : ''} selected`;
+}
+
+// ─── CUSTOM SEARCH ──────────────────────────────────────────────────────────
+async function doSearch() {
+  const q = document.getElementById('custom-q').value.trim();
+  if (!q) return;
+  const out = document.getElementById('search-out');
+  out.innerHTML = '<div style="padding:10px 14px;color:#8ba3c7;font-size:13px;">Searching…</div>';
+  try {
+    const r = await fetch(`https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(q)}`);
+    if (!r.ok) throw new Error();
+    const data = await r.json();
+    const coins = (data.coins || []).slice(0, 6);
+    if (!coins.length) {
+      out.innerHTML = '<div style="padding:10px 14px;color:#8ba3c7;font-size:13px;">No results found.</div>';
+      return;
+    }
+    out.className = 'search-results';
+    out.innerHTML = coins.map(c => `
+      <div class="sresult" onclick="addCustom('${c.id}','${c.symbol.toUpperCase()}','${escQ(c.name)}','${c.large||c.thumb||''}')">
+        <img src="${c.thumb||''}" width="26" height="26" style="border-radius:50%" onerror="this.style.display='none'">
+        <div>
+          <div class="sresult-sym">${c.symbol.toUpperCase()}</div>
+          <div class="sresult-name">${c.name}</div>
+        </div>
+        <div class="sresult-add">+ Add</div>
+      </div>
+    `).join('');
+  } catch {
+    out.innerHTML = '<div style="padding:10px 14px;color:#ef4444;font-size:13px;">Search failed — check your connection.</div>';
+  }
+}
+
+function escQ(s) { return s.replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
+
+function addCustom(id, sym, name, img) {
+  const out = document.getElementById('search-out');
+  if (S.selected.find(a => a.id === id)) {
+    out.innerHTML = `<div style="padding:10px 14px;color:#10b981;font-size:13px;">${sym} is already in your portfolio.</div>`;
+    return;
+  }
+  const asset = { id, sym, name, img };
+  S.selected.push(asset);
+  document.getElementById('custom-q').value = '';
+  out.innerHTML = `<div style="padding:10px 14px;color:#10b981;font-size:13px;">✓ ${sym} added to portfolio.</div>`;
+  buildAssetGrid();
+}
+
+// ─── STEP 2 ─────────────────────────────────────────────────────────────────
+function step2Next() {
+  if (!S.selected.length) { alert('Please select at least one asset.'); return; }
+
+  const list = document.getElementById('amount-list');
+  list.innerHTML = S.selected.map(a => `
+    <div class="amount-row">
+      <div class="amount-asset">
+        <img src="${a.img}" alt="${a.sym}" width="30" height="30" style="border-radius:50%" onerror="this.style.opacity='.3'">
+        <div>
+          <div style="font-weight:700;font-size:14px;">${a.sym}</div>
+          <div style="font-size:11px;color:#4f6a90;">${a.name}</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:12px;color:#4f6a90;">Amount</span>
+        <input type="number" class="amount-input" id="amt-${a.id}"
+               value="${S.amounts[a.id] || ''}"
+               placeholder="0.00000" min="0" step="any"
+               onkeydown="if(event.key==='Enter') step3Next()" />
+      </div>
+    </div>
+  `).join('');
+
+  showScreen('s-amounts');
+  setTimeout(() => { const el = document.querySelector('.amount-input'); if (el) el.focus(); }, 80);
+}
+
+// ─── STEP 3 ─────────────────────────────────────────────────────────────────
+function step3Next() {
+  S.amounts = {};
+  let hasAny = false;
+  S.selected.forEach(a => {
+    const v = parseFloat(document.getElementById(`amt-${a.id}`)?.value) || 0;
+    S.amounts[a.id] = v;
+    if (v > 0) hasAny = true;
+  });
+  if (!hasAny) { alert('Please enter an amount for at least one asset.'); return; }
+
+  document.getElementById('d-name').textContent = S.name;
+  document.getElementById('d-avatar').textContent = S.name.charAt(0).toUpperCase();
+
+  showScreen('s-dash');
+
+  if (S.timer) clearInterval(S.timer);
+  S.initialized = false;
+  fetchAndRender();
+  S.timer = setInterval(fetchAndRender, 5000);
+}
+
+// ─── PRICE FETCH ─────────────────────────────────────────────────────────────
+async function fetchAndRender() {
+  const ids = S.selected.map(a => a.id).join(',');
+  try {
+    const r = await fetch(
+      `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`
+    );
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    S.prices = await r.json();
+    S.lastUpd = new Date();
+    if (!S.initialized) {
+      renderDash();
+      S.initialized = true;
+    } else {
+      updateDash();
+    }
+  } catch (e) {
+    if (!S.initialized) {
+      document.getElementById('d-content').innerHTML = `
+        <div class="loading">
+          <div style="font-size:34px;">⚠️</div>
+          <div>Could not fetch prices. Check your internet connection.</div>
+          <button class="btn btn-primary" style="width:auto;padding:10px 24px;" onclick="fetchAndRender()">Retry</button>
+        </div>`;
+    }
+  }
+}
+
+// ─── FORMAT HELPERS ──────────────────────────────────────────────────────────
+const usd = n => n.toLocaleString('en-US', { style:'currency', currency:'USD', minimumFractionDigits:2, maximumFractionDigits:2 });
+const pct = n => (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
+function fmtAmt(n) {
+  if (n === 0) return '0';
+  if (n < 0.0001) return n.toFixed(8);
+  if (n < 1) return n.toFixed(6);
+  return n.toLocaleString('en-US', { minimumFractionDigits:2, maximumFractionDigits:4 });
+}
+
+// ─── COMPUTE HOLDINGS ────────────────────────────────────────────────────────
+function computeHoldings() {
+  let totalNow = 0, total24 = 0;
+  const rows = S.selected.map((a, i) => {
+    const p  = S.prices[a.id];
+    const price  = p?.usd ?? 0;
+    const chg24  = p?.usd_24h_change ?? null;
+    const amount = S.amounts[a.id] || 0;
+    const value  = price * amount;
+    const p24    = chg24 !== null ? price / (1 + chg24 / 100) : price;
+    const val24  = p24 * amount;
+    totalNow += value;
+    total24  += val24;
+    return { ...a, price, chg24, amount, value, val24, color: COLORS[i % COLORS.length] };
+  }).sort((a, b) => b.value - a.value);
+
+  const totalChgPct = total24 > 0 ? ((totalNow - total24) / total24) * 100 : null;
+  const totalChgUSD = totalNow - total24;
+  return { rows, totalNow, totalChgPct, totalChgUSD };
+}
+
+// ─── INITIAL RENDER ──────────────────────────────────────────────────────────
+function renderDash() {
+  const { rows, totalNow, totalChgPct, totalChgUSD } = computeHoldings();
+  const updStr = S.lastUpd ? S.lastUpd.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit', second:'2-digit' }) : '';
+
+  const best  = rows.filter(r => r.chg24 !== null).sort((a,b) => b.chg24 - a.chg24)[0];
+  const worst = rows.filter(r => r.chg24 !== null).sort((a,b) => a.chg24 - b.chg24)[0];
+
+  document.getElementById('d-content').innerHTML = `
+    <div class="dash-body">
+
+      <!-- Metric cards -->
+      <div class="metrics-row">
+        <div class="mcard hero">
+          <div class="mlabel">Total Portfolio Value</div>
+          <div class="mval xl" id="m-total">${usd(totalNow)}</div>
+          <div class="mchange ${totalChgPct !== null ? (totalChgPct >= 0 ? 'pos' : 'neg') : 'neu'}" id="m-chg">
+            ${totalChgPct !== null
+              ? `${pct(totalChgPct)}&ensp;(${totalChgUSD >= 0 ? '+' : ''}${usd(totalChgUSD)})&ensp;today`
+              : 'Loading 24h change…'}
+          </div>
+        </div>
+
+        <div class="mcard">
+          <div class="mlabel">Assets</div>
+          <div class="mval">${rows.filter(r => r.amount > 0).length}</div>
+          <div style="font-size:11.5px;color:#4f6a90;margin-top:4px;">${rows.length} total selected</div>
+        </div>
+
+        <div class="mcard">
+          <div class="mlabel">Best 24h</div>
+          ${best
+            ? `<div class="mval" id="m-best-sym" style="font-size:22px;">${best.sym}</div>
+               <div class="mchange pos" id="m-best-pct">${pct(best.chg24)}</div>`
+            : `<div class="mval" style="font-size:20px;">—</div>`}
+        </div>
+
+        <div class="mcard">
+          <div class="mlabel">Worst 24h</div>
+          ${worst
+            ? `<div class="mval" id="m-worst-sym" style="font-size:22px;">${worst.sym}</div>
+               <div class="mchange neg" id="m-worst-pct">${pct(worst.chg24)}</div>`
+            : `<div class="mval" style="font-size:20px;">—</div>`}
+        </div>
+      </div>
+
+      <!-- Main grid -->
+      <div class="cgrid">
+
+        <!-- Holdings table -->
+        <div class="card">
+          <div class="card-hd">
+            <span class="card-title">Holdings</span>
+            <span class="last-upd" id="m-upd">Updated ${updStr}</span>
+          </div>
+          <table class="htable">
+            <thead>
+              <tr>
+                <th>Asset</th>
+                <th>Price</th>
+                <th>24h Change</th>
+                <th>Amount</th>
+                <th>Value</th>
+                <th>Allocation</th>
+              </tr>
+            </thead>
+            <tbody id="hold-body">
+              ${rows.map(r => holdingRow(r, totalNow)).join('')}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Chart -->
+        <div class="card">
+          <div class="card-hd">
+            <span class="card-title">Allocation</span>
+          </div>
+          <div class="chart-pad">
+            <div class="chart-wrap">
+              <canvas id="pie-chart"></canvas>
+            </div>
+            <div class="legend" id="pie-legend">
+              ${rows.map(r => legendItem(r, totalNow)).join('')}
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  `;
+
+  buildChart(rows, totalNow, true);
+}
+
+// ─── HOLDING ROW HTML ────────────────────────────────────────────────────────
+function holdingRow(r, total) {
+  const allocPct = total > 0 ? (r.value / total) * 100 : 0;
+  const chgHTML = r.chg24 !== null
+    ? `<span class="cbadge ${r.chg24 >= 0 ? 'pos' : 'neg'}">${pct(r.chg24)}</span>`
+    : `<span style="color:#4f6a90">—</span>`;
+  return `
+    <tr id="row-${r.id}">
+      <td>
+        <div class="hold-asset">
+          <img src="${r.img}" alt="${r.sym}" class="himg" onerror="this.style.opacity='.3'">
+          <div>
+            <div class="hsym">${r.sym}</div>
+            <div class="hname">${r.name}</div>
+          </div>
+        </div>
+      </td>
+      <td id="p-${r.id}"><strong>${usd(r.price)}</strong></td>
+      <td id="c-${r.id}">${chgHTML}</td>
+      <td>${fmtAmt(r.amount)}&thinsp;${r.sym}</td>
+      <td id="v-${r.id}"><strong>${usd(r.value)}</strong></td>
+      <td>
+        <div style="font-size:12px;text-align:right;" id="a-${r.id}">${allocPct.toFixed(1)}%</div>
+        <div class="abar"><div class="abar-fill" id="ab-${r.id}" style="width:${allocPct}%;background:${r.color}"></div></div>
+      </td>
+    </tr>`;
+}
+
+// ─── LEGEND ITEM HTML ────────────────────────────────────────────────────────
+function legendItem(r, total) {
+  const p = total > 0 ? (r.value / total * 100).toFixed(1) : '0.0';
+  return `
+    <div class="litem">
+      <div class="ldot" style="background:${r.color}"></div>
+      <div class="lsym">${r.sym}</div>
+      <div class="lpct" id="lp-${r.id}">${p}%</div>
+    </div>`;
+}
+
+// ─── INCREMENTAL UPDATE ───────────────────────────────────────────────────────
+function updateDash() {
+  const { rows, totalNow, totalChgPct, totalChgUSD } = computeHoldings();
+  const updStr = S.lastUpd ? S.lastUpd.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit', second:'2-digit' }) : '';
+
+  // Top metrics
+  setText('m-total', usd(totalNow));
+  const chgEl = document.getElementById('m-chg');
+  if (chgEl) {
+    chgEl.className = `mchange ${totalChgPct !== null ? (totalChgPct >= 0 ? 'pos' : 'neg') : 'neu'}`;
+    chgEl.innerHTML = totalChgPct !== null
+      ? `${pct(totalChgPct)}&ensp;(${totalChgUSD >= 0 ? '+' : ''}${usd(totalChgUSD)})&ensp;today`
+      : 'Loading 24h change…';
+  }
+  setText('m-upd', `Updated ${updStr}`);
+
+  const best  = rows.filter(r => r.chg24 !== null).sort((a,b) => b.chg24 - a.chg24)[0];
+  const worst = rows.filter(r => r.chg24 !== null).sort((a,b) => a.chg24 - b.chg24)[0];
+  if (best)  { setText('m-best-sym', best.sym);   setText('m-best-pct', pct(best.chg24)); }
+  if (worst) { setText('m-worst-sym', worst.sym);  setText('m-worst-pct', pct(worst.chg24)); }
+
+  // Table rows
+  rows.forEach(r => {
+    const allocPct = totalNow > 0 ? (r.value / totalNow) * 100 : 0;
+    const chgHTML = r.chg24 !== null
+      ? `<span class="cbadge ${r.chg24 >= 0 ? 'pos' : 'neg'}">${pct(r.chg24)}</span>`
+      : `<span style="color:#4f6a90">—</span>`;
+    setHTML(`p-${r.id}`,  `<strong>${usd(r.price)}</strong>`);
+    setHTML(`c-${r.id}`,  chgHTML);
+    setHTML(`v-${r.id}`,  `<strong>${usd(r.value)}</strong>`);
+    setText(`a-${r.id}`,  `${allocPct.toFixed(1)}%`);
+    const bar = document.getElementById(`ab-${r.id}`);
+    if (bar) bar.style.width = `${allocPct}%`;
+    setText(`lp-${r.id}`, `${allocPct.toFixed(1)}%`);
+  });
+
+  buildChart(rows, totalNow, false);
+}
+
+function setText(id, v) { const el = document.getElementById(id); if (el) el.textContent = v; }
+function setHTML(id, v) { const el = document.getElementById(id); if (el) el.innerHTML = v; }
+
+// ─── CHART ────────────────────────────────────────────────────────────────────
+function buildChart(rows, total, animate) {
+  const ctx = document.getElementById('pie-chart');
+  if (!ctx) return;
+  const vals = rows.map(r => r.value > 0 ? r.value : 0.0000001);
+  const cols = rows.map(r => r.color);
+
+  if (S.chart) {
+    S.chart.data.datasets[0].data = vals;
+    S.chart.data.datasets[0].backgroundColor = cols;
+    S.chart.update('none');
+    return;
+  }
+
+  S.chart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: rows.map(r => r.sym),
+      datasets: [{
+        data: vals,
+        backgroundColor: cols,
+        borderColor: '#111930',
+        borderWidth: 3,
+        hoverBorderWidth: 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      cutout: '66%',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const r = rows[ctx.dataIndex];
+              const p = total > 0 ? (r.value / total * 100).toFixed(1) : '0.0';
+              return ` ${r.sym}: ${usd(r.value)}  (${p}%)`;
+            }
+          },
+          backgroundColor: '#172039',
+          borderColor: '#1c2b47',
+          borderWidth: 1,
+          titleColor: '#f0f4fc',
+          bodyColor: '#8ba3c7',
+          padding: 10,
+        }
+      },
+      animation: animate ? { duration: 600 } : false,
+    }
+  });
+}
+
+// ─── RESTART ─────────────────────────────────────────────────────────────────
+function restart() {
+  if (S.timer) { clearInterval(S.timer); S.timer = null; }
+  if (S.chart) { S.chart.destroy(); S.chart = null; }
+  S.selected = [];
+  S.amounts  = {};
+  S.prices   = {};
+  S.initialized = false;
+  S.lastUpd  = null;
+  document.getElementById('inp-name').value = '';
+  document.getElementById('search-out').innerHTML = '';
+  document.getElementById('d-content').innerHTML = `
+    <div class="loading">
+      <div class="spinner"></div>
+      <div>Fetching live market prices…</div>
+    </div>`;
+  showScreen('s-welcome');
+}
+</script>
+</body>
+</html>
