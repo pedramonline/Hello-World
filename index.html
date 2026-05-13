@@ -127,6 +127,9 @@
       width:100%;
       max-width:560px;
     }
+    @media(max-width:600px){
+      .flow-card { padding:28px 22px; }
+    }
 
     /* ── WELCOME ── */
     .welcome-icon {
@@ -436,8 +439,7 @@
     .last-upd   { font-size:11px; color:var(--txt3); }
 
     /* ── HOLDINGS TABLE ── */
-    .htable-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
-    .htable { width:100%; border-collapse:collapse; min-width:520px; }
+    .htable { width:100%; border-collapse:collapse; }
     .htable th {
       padding:11px 16px;
       text-align:right;
@@ -520,6 +522,10 @@
     @keyframes spin { to { transform:rotate(360deg); } }
 
     hr.div { border:none; border-top:1px solid var(--border); margin:20px 0; }
+
+    /* ── TABLE SCROLL WRAPPER ── */
+    .htable-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+    .htable { min-width:520px; }
 
     /* ── MOBILE ── */
     @media(max-width:640px) {
@@ -751,6 +757,7 @@
      JAVASCRIPT
 ════════════════════════════════════════════ -->
 <script>
+// ─── PRESET ASSETS ─────────────────────────────────────────────────────────
 const PRESETS = [
   { id:'bitcoin',      sym:'BTC',  name:'Bitcoin',   img:'https://assets.coingecko.com/coins/images/1/small/bitcoin.png' },
   { id:'ethereum',     sym:'ETH',  name:'Ethereum',  img:'https://assets.coingecko.com/coins/images/279/small/ethereum.png' },
@@ -767,23 +774,41 @@ const COLORS = [
   '#14b8a6','#e879f9','#fb923c','#34d399','#60a5fa',
 ];
 
+// ─── BINANCE SYMBOL MAP ──────────────────────────────────────────────────────
+const BINANCE = {
+  bitcoin:     'btcusdt',
+  ethereum:    'ethusdt',
+  solana:      'solusdt',
+  ripple:      'xrpusdt',
+  cardano:     'adausdt',
+  dogecoin:    'dogeusdt',
+  binancecoin: 'bnbusdt',
+};
+function binanceSym(a) { return BINANCE[a.id] || `${a.sym.toLowerCase()}usdt`; }
+
+// ─── STATE ─────────────────────────────────────────────────────────────────
 const S = {
   name: '',
   selected: [],
   amounts: {},
-  prices: {},
-  timer: null,
+  prices: {},     // { id: { usd, usd_24h_change } }
+  ws: null,
+  wsActive: false,
+  timer: null,    // CoinGecko fallback interval
   chart: null,
   initialized: false,
   lastUpd: null,
+  rafPending: false,
 };
 
+// ─── NAVIGATION ─────────────────────────────────────────────────────────────
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   window.scrollTo(0, 0);
 }
 
+// ─── STEP 1 ─────────────────────────────────────────────────────────────────
 function step1Next() {
   const v = document.getElementById('inp-name').value.trim();
   if (!v) { document.getElementById('inp-name').focus(); return; }
@@ -792,6 +817,7 @@ function step1Next() {
   showScreen('s-assets');
 }
 
+// ─── ASSET GRID ─────────────────────────────────────────────────────────────
 function buildAssetGrid() {
   const grid = document.getElementById('asset-grid');
   const all = [
@@ -842,6 +868,7 @@ function updateSelCount() {
     n === 0 ? 'No assets selected' : `${n} asset${n > 1 ? 's' : ''} selected`;
 }
 
+// ─── CUSTOM SEARCH ──────────────────────────────────────────────────────────
 async function doSearch() {
   const q = document.getElementById('custom-q').value.trim();
   if (!q) return;
@@ -859,7 +886,7 @@ async function doSearch() {
     out.className = 'search-results';
     out.innerHTML = coins.map(c => `
       <div class="sresult" onclick="addCustom('${c.id}','${c.symbol.toUpperCase()}','${escQ(c.name)}','${c.large||c.thumb||''}')">
-        <img src="${c.thumb||''}" width="26" height="26" style="border-radius:50%" onerror="this.style.display='none'">
+        <img src="${c.thumb||\''}" width="26" height="26" style="border-radius:50%" onerror="this.style.display='none'">
         <div>
           <div class="sresult-sym">${c.symbol.toUpperCase()}</div>
           <div class="sresult-name">${c.name}</div>
@@ -887,6 +914,7 @@ function addCustom(id, sym, name, img) {
   buildAssetGrid();
 }
 
+// ─── STEP 2 ─────────────────────────────────────────────────────────────────
 function step2Next() {
   if (!S.selected.length) { alert('Please select at least one asset.'); return; }
 
@@ -914,6 +942,7 @@ function step2Next() {
   setTimeout(() => { const el = document.querySelector('.amount-input'); if (el) el.focus(); }, 80);
 }
 
+// ─── STEP 3 ─────────────────────────────────────────────────────────────────
 function step3Next() {
   S.amounts = {};
   let hasAny = false;
@@ -928,40 +957,92 @@ function step3Next() {
   document.getElementById('d-avatar').textContent = S.name.charAt(0).toUpperCase();
 
   showScreen('s-dash');
-
-  if (S.timer) clearInterval(S.timer);
+  stopRealtime();
   S.initialized = false;
-  fetchAndRender();
-  S.timer = setInterval(fetchAndRender, 5000);
+
+  // Initial prices from CoinGecko, then open WebSocket
+  fetchCoinGecko().then(() => openWS());
+
+  // CoinGecko fallback every 60s for any coin the WS misses (e.g. custom coins)
+  S.timer = setInterval(fetchCoinGecko, 60000);
 }
 
-async function fetchAndRender() {
+function stopRealtime() {
+  if (S.timer) { clearInterval(S.timer); S.timer = null; }
+  if (S.ws)    { S.wsActive = false; S.ws.close(); S.ws = null; }
+}
+
+// ─── COINGECKO INITIAL / FALLBACK FETCH ──────────────────────────────────────
+async function fetchCoinGecko() {
   const ids = S.selected.map(a => a.id).join(',');
   try {
     const r = await fetch(
       `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`
     );
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    S.prices = await r.json();
+    const data = await r.json();
+    Object.assign(S.prices, data);
     S.lastUpd = new Date();
-    if (!S.initialized) {
-      renderDash();
-      S.initialized = true;
-    } else {
-      updateDash();
-    }
-  } catch (e) {
+    if (!S.initialized) { renderDash(); S.initialized = true; }
+    else scheduleUpdate();
+  } catch {
     if (!S.initialized) {
       document.getElementById('d-content').innerHTML = `
         <div class="loading">
           <div style="font-size:34px;">⚠️</div>
-          <div>Could not fetch prices. Check your internet connection.</div>
-          <button class="btn btn-primary" style="width:auto;padding:10px 24px;" onclick="fetchAndRender()">Retry</button>
+          <div>Could not fetch prices. Check your connection.</div>
+          <button class="btn btn-primary" style="width:auto;padding:10px 24px;" onclick="fetchCoinGecko()">Retry</button>
         </div>`;
     }
   }
 }
 
+// ─── BINANCE WEBSOCKET ───────────────────────────────────────────────────────
+function openWS() {
+  if (S.ws) { S.ws.close(); S.ws = null; }
+  S.wsActive = true;
+
+  const streams = S.selected.map(a => `${binanceSym(a)}@miniTicker`).join('/');
+  S.ws = new WebSocket(`wss://stream.binance.com:9443/stream?streams=${streams}`);
+
+  S.ws.onmessage = evt => {
+    try {
+      const { data } = JSON.parse(evt.data);
+      if (!data || !data.s) return;
+      const sym = data.s.toLowerCase();
+      const asset = S.selected.find(a => binanceSym(a) === sym);
+      if (!asset) return;
+
+      const price = parseFloat(data.c);
+      const open  = parseFloat(data.o);
+      const chg24 = open > 0 ? ((price - open) / open) * 100
+                              : (S.prices[asset.id]?.usd_24h_change ?? null);
+      S.prices[asset.id] = { usd: price, usd_24h_change: chg24 };
+      S.lastUpd = new Date();
+      if (S.initialized) scheduleUpdate();
+    } catch {}
+  };
+
+  S.ws.onclose = () => {
+    if (S.wsActive) setTimeout(openWS, 3000);
+  };
+
+  S.ws.onerror = () => {
+    S.wsActive = false;
+    // Fall back to faster CoinGecko polling
+    if (S.timer) clearInterval(S.timer);
+    S.timer = setInterval(fetchCoinGecko, 10000);
+  };
+}
+
+// Throttle DOM updates to one per animation frame
+function scheduleUpdate() {
+  if (S.rafPending) return;
+  S.rafPending = true;
+  requestAnimationFrame(() => { S.rafPending = false; if (S.initialized) updateDash(); });
+}
+
+// ─── FORMAT HELPERS ──────────────────────────────────────────────────────────
 const usd = n => n.toLocaleString('en-US', { style:'currency', currency:'USD', minimumFractionDigits:2, maximumFractionDigits:2 });
 const pct = n => (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
 function fmtAmt(n) {
@@ -971,6 +1052,7 @@ function fmtAmt(n) {
   return n.toLocaleString('en-US', { minimumFractionDigits:2, maximumFractionDigits:4 });
 }
 
+// ─── COMPUTE HOLDINGS ────────────────────────────────────────────────────────
 function computeHoldings() {
   let totalNow = 0, total24 = 0;
   const rows = S.selected.map((a, i) => {
@@ -991,6 +1073,7 @@ function computeHoldings() {
   return { rows, totalNow, totalChgPct, totalChgUSD };
 }
 
+// ─── INITIAL RENDER ──────────────────────────────────────────────────────────
 function renderDash() {
   const { rows, totalNow, totalChgPct, totalChgUSD } = computeHoldings();
   const updStr = S.lastUpd ? S.lastUpd.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit', second:'2-digit' }) : '';
@@ -1000,6 +1083,8 @@ function renderDash() {
 
   document.getElementById('d-content').innerHTML = `
     <div class="dash-body">
+
+      <!-- Metric cards -->
       <div class="metrics-row">
         <div class="mcard hero">
           <div class="mlabel">Total Portfolio Value</div>
@@ -1010,11 +1095,13 @@ function renderDash() {
               : 'Loading 24h change…'}
           </div>
         </div>
+
         <div class="mcard">
           <div class="mlabel">Assets</div>
           <div class="mval">${rows.filter(r => r.amount > 0).length}</div>
           <div style="font-size:11.5px;color:#4f6a90;margin-top:4px;">${rows.length} total selected</div>
         </div>
+
         <div class="mcard">
           <div class="mlabel">Best 24h</div>
           ${best
@@ -1022,6 +1109,7 @@ function renderDash() {
                <div class="mchange pos" id="m-best-pct">${pct(best.chg24)}</div>`
             : `<div class="mval" style="font-size:20px;">—</div>`}
         </div>
+
         <div class="mcard">
           <div class="mlabel">Worst 24h</div>
           ${worst
@@ -1031,7 +1119,10 @@ function renderDash() {
         </div>
       </div>
 
+      <!-- Main grid -->
       <div class="cgrid">
+
+        <!-- Holdings table -->
         <div class="card">
           <div class="card-hd">
             <span class="card-title">Holdings</span>
@@ -1043,10 +1134,10 @@ function renderDash() {
                 <tr>
                   <th>Asset</th>
                   <th>Price</th>
-                  <th>24h</th>
+                  <th>24h Change</th>
                   <th>Amount</th>
                   <th>Value</th>
-                  <th>Alloc</th>
+                  <th>Allocation</th>
                 </tr>
               </thead>
               <tbody id="hold-body">
@@ -1056,6 +1147,7 @@ function renderDash() {
           </div>
         </div>
 
+        <!-- Chart -->
         <div class="card">
           <div class="card-hd">
             <span class="card-title">Allocation</span>
@@ -1069,6 +1161,7 @@ function renderDash() {
             </div>
           </div>
         </div>
+
       </div>
     </div>
   `;
@@ -1076,6 +1169,7 @@ function renderDash() {
   buildChart(rows, totalNow, true);
 }
 
+// ─── HOLDING ROW HTML ────────────────────────────────────────────────────────
 function holdingRow(r, total) {
   const allocPct = total > 0 ? (r.value / total) * 100 : 0;
   const chgHTML = r.chg24 !== null
@@ -1103,6 +1197,7 @@ function holdingRow(r, total) {
     </tr>`;
 }
 
+// ─── LEGEND ITEM HTML ────────────────────────────────────────────────────────
 function legendItem(r, total) {
   const p = total > 0 ? (r.value / total * 100).toFixed(1) : '0.0';
   return `
@@ -1113,6 +1208,7 @@ function legendItem(r, total) {
     </div>`;
 }
 
+// ─── INCREMENTAL UPDATE ───────────────────────────────────────────────────────
 function updateDash() {
   const { rows, totalNow, totalChgPct, totalChgUSD } = computeHoldings();
   const updStr = S.lastUpd ? S.lastUpd.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit', second:'2-digit' }) : '';
@@ -1152,6 +1248,7 @@ function updateDash() {
 function setText(id, v) { const el = document.getElementById(id); if (el) el.textContent = v; }
 function setHTML(id, v) { const el = document.getElementById(id); if (el) el.innerHTML = v; }
 
+// ─── CHART ────────────────────────────────────────────────────────────────────
 function buildChart(rows, total, animate) {
   const ctx = document.getElementById('pie-chart');
   if (!ctx) return;
@@ -1204,8 +1301,9 @@ function buildChart(rows, total, animate) {
   });
 }
 
+// ─── RESTART ─────────────────────────────────────────────────────────────────
 function restart() {
-  if (S.timer) { clearInterval(S.timer); S.timer = null; }
+  stopRealtime();
   if (S.chart) { S.chart.destroy(); S.chart = null; }
   S.selected = [];
   S.amounts  = {};
