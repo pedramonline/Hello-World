@@ -127,9 +127,6 @@
       width:100%;
       max-width:560px;
     }
-    @media(max-width:600px){
-      .flow-card { padding:28px 22px; }
-    }
 
     /* ── WELCOME ── */
     .welcome-icon {
@@ -439,7 +436,8 @@
     .last-upd   { font-size:11px; color:var(--txt3); }
 
     /* ── HOLDINGS TABLE ── */
-    .htable { width:100%; border-collapse:collapse; }
+    .htable-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+    .htable { width:100%; border-collapse:collapse; min-width:520px; }
     .htable th {
       padding:11px 16px;
       text-align:right;
@@ -522,6 +520,65 @@
     @keyframes spin { to { transform:rotate(360deg); } }
 
     hr.div { border:none; border-top:1px solid var(--border); margin:20px 0; }
+
+    /* ── MOBILE ── */
+    @media(max-width:640px) {
+      .sim-banner { font-size:10px; padding:6px 12px; }
+
+      /* Flow cards */
+      .flow-card { padding:24px 18px; border-radius:16px; }
+      .center-wrap { padding:20px 14px; align-items:flex-start; }
+      .welcome-icon { width:56px; height:56px; font-size:26px; border-radius:14px; margin-bottom:16px; }
+      .welcome-title { font-size:22px; }
+
+      /* Asset grid: 2 columns */
+      .asset-grid { grid-template-columns:repeat(2,1fr); gap:8px; }
+      .aname { display:none; }
+
+      /* Amount rows: stack vertically */
+      .amount-row { flex-direction:column; align-items:flex-start; gap:8px; padding:12px 13px; }
+      .amount-input { width:100%; text-align:left; }
+
+      /* Dashboard header: compact */
+      .dash-header { padding:10px 14px; gap:8px; }
+      .logo { font-size:15px; gap:7px; }
+      .logo-box { width:28px; height:28px; font-size:14px; border-radius:7px; }
+      .logo .sim-pill { display:none; }
+      .avatar { width:32px; height:32px; font-size:13px; }
+      .uname { font-size:13px; }
+      .ulabel { display:none; }
+      .live-badge { font-size:10px; }
+      .btn-ghost { padding:6px 10px; font-size:11px; }
+
+      /* Dashboard body */
+      .dash-body { padding:14px 12px 28px; }
+
+      /* Metric cards: 2-col grid, hero full width */
+      .metrics-row { grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
+      .mcard { padding:14px 14px; border-radius:12px; }
+      .mcard.hero { grid-column:1 / -1; }
+      .mval.xl { font-size:26px; }
+      .mval { font-size:20px; }
+      .mlabel { font-size:9.5px; }
+      .mchange { font-size:11px; }
+
+      /* Cards */
+      .card { border-radius:12px; }
+      .card-hd { padding:12px 14px; }
+      .card-title { font-size:13px; }
+
+      /* Chart */
+      .chart-wrap { width:160px; height:160px; }
+      .chart-pad { padding:16px; }
+
+      /* Footer */
+      .dash-foot { padding:12px 14px; font-size:10px; }
+    }
+
+    @media(max-width:380px) {
+      .metrics-row { grid-template-columns:1fr; }
+      .mcard.hero { grid-column:auto; }
+    }
   </style>
 </head>
 <body>
@@ -694,7 +751,6 @@
      JAVASCRIPT
 ════════════════════════════════════════════ -->
 <script>
-// ─── PRESET ASSETS ─────────────────────────────────────────────────────────
 const PRESETS = [
   { id:'bitcoin',      sym:'BTC',  name:'Bitcoin',   img:'https://assets.coingecko.com/coins/images/1/small/bitcoin.png' },
   { id:'ethereum',     sym:'ETH',  name:'Ethereum',  img:'https://assets.coingecko.com/coins/images/279/small/ethereum.png' },
@@ -711,26 +767,23 @@ const COLORS = [
   '#14b8a6','#e879f9','#fb923c','#34d399','#60a5fa',
 ];
 
-// ─── STATE ─────────────────────────────────────────────────────────────────
 const S = {
   name: '',
-  selected: [],   // [{ id, sym, name, img }]
-  amounts: {},    // { id: number }
-  prices: {},     // { id: { usd, usd_24h_change } }
+  selected: [],
+  amounts: {},
+  prices: {},
   timer: null,
   chart: null,
   initialized: false,
   lastUpd: null,
 };
 
-// ─── NAVIGATION ─────────────────────────────────────────────────────────────
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   window.scrollTo(0, 0);
 }
 
-// ─── STEP 1 ─────────────────────────────────────────────────────────────────
 function step1Next() {
   const v = document.getElementById('inp-name').value.trim();
   if (!v) { document.getElementById('inp-name').focus(); return; }
@@ -739,7 +792,6 @@ function step1Next() {
   showScreen('s-assets');
 }
 
-// ─── ASSET GRID ─────────────────────────────────────────────────────────────
 function buildAssetGrid() {
   const grid = document.getElementById('asset-grid');
   const all = [
@@ -790,7 +842,6 @@ function updateSelCount() {
     n === 0 ? 'No assets selected' : `${n} asset${n > 1 ? 's' : ''} selected`;
 }
 
-// ─── CUSTOM SEARCH ──────────────────────────────────────────────────────────
 async function doSearch() {
   const q = document.getElementById('custom-q').value.trim();
   if (!q) return;
@@ -836,7 +887,6 @@ function addCustom(id, sym, name, img) {
   buildAssetGrid();
 }
 
-// ─── STEP 2 ─────────────────────────────────────────────────────────────────
 function step2Next() {
   if (!S.selected.length) { alert('Please select at least one asset.'); return; }
 
@@ -850,7 +900,7 @@ function step2Next() {
           <div style="font-size:11px;color:#4f6a90;">${a.name}</div>
         </div>
       </div>
-      <div style="display:flex;align-items:center;gap:8px;">
+      <div style="display:flex;align-items:center;gap:8px;width:100%;">
         <span style="font-size:12px;color:#4f6a90;">Amount</span>
         <input type="number" class="amount-input" id="amt-${a.id}"
                value="${S.amounts[a.id] || ''}"
@@ -864,7 +914,6 @@ function step2Next() {
   setTimeout(() => { const el = document.querySelector('.amount-input'); if (el) el.focus(); }, 80);
 }
 
-// ─── STEP 3 ─────────────────────────────────────────────────────────────────
 function step3Next() {
   S.amounts = {};
   let hasAny = false;
@@ -886,7 +935,6 @@ function step3Next() {
   S.timer = setInterval(fetchAndRender, 5000);
 }
 
-// ─── PRICE FETCH ─────────────────────────────────────────────────────────────
 async function fetchAndRender() {
   const ids = S.selected.map(a => a.id).join(',');
   try {
@@ -914,7 +962,6 @@ async function fetchAndRender() {
   }
 }
 
-// ─── FORMAT HELPERS ──────────────────────────────────────────────────────────
 const usd = n => n.toLocaleString('en-US', { style:'currency', currency:'USD', minimumFractionDigits:2, maximumFractionDigits:2 });
 const pct = n => (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
 function fmtAmt(n) {
@@ -924,7 +971,6 @@ function fmtAmt(n) {
   return n.toLocaleString('en-US', { minimumFractionDigits:2, maximumFractionDigits:4 });
 }
 
-// ─── COMPUTE HOLDINGS ────────────────────────────────────────────────────────
 function computeHoldings() {
   let totalNow = 0, total24 = 0;
   const rows = S.selected.map((a, i) => {
@@ -945,7 +991,6 @@ function computeHoldings() {
   return { rows, totalNow, totalChgPct, totalChgUSD };
 }
 
-// ─── INITIAL RENDER ──────────────────────────────────────────────────────────
 function renderDash() {
   const { rows, totalNow, totalChgPct, totalChgUSD } = computeHoldings();
   const updStr = S.lastUpd ? S.lastUpd.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit', second:'2-digit' }) : '';
@@ -955,8 +1000,6 @@ function renderDash() {
 
   document.getElementById('d-content').innerHTML = `
     <div class="dash-body">
-
-      <!-- Metric cards -->
       <div class="metrics-row">
         <div class="mcard hero">
           <div class="mlabel">Total Portfolio Value</div>
@@ -967,13 +1010,11 @@ function renderDash() {
               : 'Loading 24h change…'}
           </div>
         </div>
-
         <div class="mcard">
           <div class="mlabel">Assets</div>
           <div class="mval">${rows.filter(r => r.amount > 0).length}</div>
           <div style="font-size:11.5px;color:#4f6a90;margin-top:4px;">${rows.length} total selected</div>
         </div>
-
         <div class="mcard">
           <div class="mlabel">Best 24h</div>
           ${best
@@ -981,7 +1022,6 @@ function renderDash() {
                <div class="mchange pos" id="m-best-pct">${pct(best.chg24)}</div>`
             : `<div class="mval" style="font-size:20px;">—</div>`}
         </div>
-
         <div class="mcard">
           <div class="mlabel">Worst 24h</div>
           ${worst
@@ -991,33 +1031,31 @@ function renderDash() {
         </div>
       </div>
 
-      <!-- Main grid -->
       <div class="cgrid">
-
-        <!-- Holdings table -->
         <div class="card">
           <div class="card-hd">
             <span class="card-title">Holdings</span>
             <span class="last-upd" id="m-upd">Updated ${updStr}</span>
           </div>
-          <table class="htable">
-            <thead>
-              <tr>
-                <th>Asset</th>
-                <th>Price</th>
-                <th>24h Change</th>
-                <th>Amount</th>
-                <th>Value</th>
-                <th>Allocation</th>
-              </tr>
-            </thead>
-            <tbody id="hold-body">
-              ${rows.map(r => holdingRow(r, totalNow)).join('')}
-            </tbody>
-          </table>
+          <div class="htable-wrap">
+            <table class="htable">
+              <thead>
+                <tr>
+                  <th>Asset</th>
+                  <th>Price</th>
+                  <th>24h</th>
+                  <th>Amount</th>
+                  <th>Value</th>
+                  <th>Alloc</th>
+                </tr>
+              </thead>
+              <tbody id="hold-body">
+                ${rows.map(r => holdingRow(r, totalNow)).join('')}
+              </tbody>
+            </table>
+          </div>
         </div>
 
-        <!-- Chart -->
         <div class="card">
           <div class="card-hd">
             <span class="card-title">Allocation</span>
@@ -1031,7 +1069,6 @@ function renderDash() {
             </div>
           </div>
         </div>
-
       </div>
     </div>
   `;
@@ -1039,7 +1076,6 @@ function renderDash() {
   buildChart(rows, totalNow, true);
 }
 
-// ─── HOLDING ROW HTML ────────────────────────────────────────────────────────
 function holdingRow(r, total) {
   const allocPct = total > 0 ? (r.value / total) * 100 : 0;
   const chgHTML = r.chg24 !== null
@@ -1067,7 +1103,6 @@ function holdingRow(r, total) {
     </tr>`;
 }
 
-// ─── LEGEND ITEM HTML ────────────────────────────────────────────────────────
 function legendItem(r, total) {
   const p = total > 0 ? (r.value / total * 100).toFixed(1) : '0.0';
   return `
@@ -1078,7 +1113,6 @@ function legendItem(r, total) {
     </div>`;
 }
 
-// ─── INCREMENTAL UPDATE ───────────────────────────────────────────────────────
 function updateDash() {
   const { rows, totalNow, totalChgPct, totalChgUSD } = computeHoldings();
   const updStr = S.lastUpd ? S.lastUpd.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit', second:'2-digit' }) : '';
@@ -1118,7 +1152,6 @@ function updateDash() {
 function setText(id, v) { const el = document.getElementById(id); if (el) el.textContent = v; }
 function setHTML(id, v) { const el = document.getElementById(id); if (el) el.innerHTML = v; }
 
-// ─── CHART ────────────────────────────────────────────────────────────────────
 function buildChart(rows, total, animate) {
   const ctx = document.getElementById('pie-chart');
   if (!ctx) return;
@@ -1171,7 +1204,6 @@ function buildChart(rows, total, animate) {
   });
 }
 
-// ─── RESTART ─────────────────────────────────────────────────────────────────
 function restart() {
   if (S.timer) { clearInterval(S.timer); S.timer = null; }
   if (S.chart) { S.chart.destroy(); S.chart = null; }
