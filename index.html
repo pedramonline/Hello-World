@@ -886,7 +886,7 @@ async function doSearch() {
     out.className = 'search-results';
     out.innerHTML = coins.map(c => `
       <div class="sresult" onclick="addCustom('${c.id}','${c.symbol.toUpperCase()}','${escQ(c.name)}','${c.large||c.thumb||''}')">
-        <img src="${c.thumb||\''}" width="26" height="26" style="border-radius:50%" onerror="this.style.display='none'">
+        <img src="${c.thumb||""}" width="26" height="26" style="border-radius:50%" onerror="this.style.display='none'">
         <div>
           <div class="sresult-sym">${c.symbol.toUpperCase()}</div>
           <div class="sresult-name">${c.name}</div>
