@@ -440,6 +440,12 @@
 
     /* ── HOLDINGS TABLE ── */
     .htable { width:100%; border-collapse:collapse; table-layout:fixed; }
+    .htable th:nth-child(1) { width:34%; }
+    .htable th:nth-child(2) { width:14%; }
+    .htable th:nth-child(3) { width:13%; }
+    .htable th:nth-child(4) { width:15%; }
+    .htable th:nth-child(5) { width:12%; }
+    .htable th:nth-child(6) { width:12%; }
     .htable th {
       padding:11px 16px;
       text-align:right;
@@ -452,13 +458,6 @@
       white-space:nowrap;
     }
     .htable th:first-child { text-align:left; }
-    /* Fixed column widths prevent layout shift as numbers change */
-    .htable th:nth-child(1) { width:34%; }
-    .htable th:nth-child(2) { width:14%; }
-    .htable th:nth-child(3) { width:13%; }
-    .htable th:nth-child(4) { width:15%; }
-    .htable th:nth-child(5) { width:12%; }
-    .htable th:nth-child(6) { width:12%; }
     .htable td {
       padding:13px 16px;
       font-size:13.5px;
@@ -759,7 +758,7 @@
   </div>
 
   <div class="dash-foot">
-    Price data from CoinGecko API &nbsp;·&nbsp; Auto-refreshes every 5 seconds &nbsp;·&nbsp;
+    Price data from Binance API &nbsp;·&nbsp; Real-time WebSocket updates &nbsp;·&nbsp;
     <strong>SIMULATOR ONLY</strong> — Not a real wallet &nbsp;·&nbsp; No blockchain connection
   </div>
 </div>
@@ -806,7 +805,7 @@ const S = {
   prices: {},     // { id: { usd, usd_24h_change } }
   ws: null,
   wsActive: false,
-  timer: null,    // CoinGecko fallback interval
+  timer: null,
   chart: null,
   initialized: false,
   lastUpd: null,
@@ -972,12 +971,9 @@ function step3Next() {
   stopRealtime();
   S.initialized = false;
 
-  // Fetch snapshot from Binance REST + open WebSocket simultaneously
+  // Fetch initial snapshot from Binance REST, open WS simultaneously
   fetchBinanceREST();
   openWS();
-
-  // Retry REST snapshot every 30s as backup
-  S.timer = setInterval(fetchBinanceREST, 30000);
 }
 
 function stopRealtime() {
@@ -985,7 +981,7 @@ function stopRealtime() {
   if (S.ws)    { S.wsActive = false; S.ws.close(); S.ws = null; }
 }
 
-// ─── BINANCE REST SNAPSHOT ────────────────────────────────────────────────────
+// ─── BINANCE REST INITIAL SNAPSHOT ───────────────────────────────────────────
 async function fetchBinanceREST() {
   const syms = S.selected.map(a => `"${binanceSym(a).toUpperCase()}"`).join(',');
   try {
@@ -997,26 +993,28 @@ async function fetchBinanceREST() {
       const asset = S.selected.find(a => binanceSym(a) === sym);
       if (!asset) return;
       S.prices[asset.id] = {
-        usd:            parseFloat(t.lastPrice),
-        usd_24h_change: parseFloat(t.priceChangePercent),
+        usd:             parseFloat(t.lastPrice),
+        usd_24h_change:  parseFloat(t.priceChangePercent),
       };
     });
     S.lastUpd = new Date();
     if (!S.initialized && Object.keys(S.prices).length > 0) {
-      renderDash(); S.initialized = true;
-    } else if (S.initialized) {
-      scheduleUpdate();
+      renderDash();
+      S.initialized = true;
     }
   } catch {
-    // WebSocket will populate prices; show error only if both fail after 10s
+    // WS will populate prices shortly; show error only if both fail
     setTimeout(() => {
-      if (!S.initialized)
+      if (!S.initialized) {
         document.getElementById('d-content').innerHTML = `
-          <div class="loading"><div style="font-size:34px;">⚠️</div>
-          <div>Could not connect to price feed. Check your connection.</div>
-          <button class="btn btn-primary" style="width:auto;padding:10px 24px;"
-                  onclick="fetchBinanceREST();openWS()">Retry</button></div>`;
-    }, 10000);
+          <div class="loading">
+            <div style="font-size:34px;">⚠️</div>
+            <div>Could not connect to price feed.</div>
+            <button class="btn btn-primary" style="width:auto;padding:10px 24px;"
+                    onclick="fetchBinanceREST();openWS()">Retry</button>
+          </div>`;
+      }
+    }, 8000);
   }
 }
 
@@ -1042,11 +1040,7 @@ function openWS() {
                               : (S.prices[asset.id]?.usd_24h_change ?? null);
       S.prices[asset.id] = { usd: price, usd_24h_change: chg24 };
       S.lastUpd = new Date();
-      if (!S.initialized && Object.keys(S.prices).length === S.selected.length) {
-        renderDash(); S.initialized = true;
-      } else if (S.initialized) {
-        scheduleUpdate();
-      }
+      if (S.initialized) scheduleUpdate();
     } catch {}
   };
 
@@ -1056,9 +1050,9 @@ function openWS() {
 
   S.ws.onerror = () => {
     S.wsActive = false;
-    // Fall back to faster CoinGecko polling
+    // Fall back to polling Binance REST
     if (S.timer) clearInterval(S.timer);
-    S.timer = setInterval(fetchCoinGecko, 10000);
+    S.timer = setInterval(fetchBinanceREST, 5000);
   };
 }
 
