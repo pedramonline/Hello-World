@@ -886,7 +886,7 @@ async function doSearch() {
     out.className = 'search-results';
     out.innerHTML = coins.map(c => `
       <div class="sresult" onclick="addCustom('${c.id}','${c.symbol.toUpperCase()}','${escQ(c.name)}','${c.large||c.thumb||''}')">
-        <img src="${c.thumb||""}" width="26" height="26" style="border-radius:50%" onerror="this.style.display='none'">
+        <img src="${c.thumb||\'\'}" width="26" height="26" style="border-radius:50%" onerror="this.style.display='none'">
         <div>
           <div class="sresult-sym">${c.symbol.toUpperCase()}</div>
           <div class="sresult-name">${c.name}</div>
@@ -960,11 +960,9 @@ function step3Next() {
   stopRealtime();
   S.initialized = false;
 
-  // Initial prices from CoinGecko, then open WebSocket
-  fetchCoinGecko().then(() => openWS());
-
-  // CoinGecko fallback every 60s for any coin the WS misses (e.g. custom coins)
-  S.timer = setInterval(fetchCoinGecko, 60000);
+  // Fetch initial snapshot from Binance REST, open WS simultaneously
+  fetchBinanceREST();
+  openWS();
 }
 
 function stopRealtime() {
@@ -972,28 +970,40 @@ function stopRealtime() {
   if (S.ws)    { S.wsActive = false; S.ws.close(); S.ws = null; }
 }
 
-// ─── COINGECKO INITIAL / FALLBACK FETCH ──────────────────────────────────────
-async function fetchCoinGecko() {
-  const ids = S.selected.map(a => a.id).join(',');
+// ─── BINANCE REST INITIAL SNAPSHOT ───────────────────────────────────────────
+async function fetchBinanceREST() {
+  const syms = S.selected.map(a => `"${binanceSym(a).toUpperCase()}"`).join(',');
   try {
-    const r = await fetch(
-      `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`
-    );
+    const r = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbols=[${syms}]`);
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    const data = await r.json();
-    Object.assign(S.prices, data);
+    const tickers = await r.json();
+    tickers.forEach(t => {
+      const sym   = t.symbol.toLowerCase();
+      const asset = S.selected.find(a => binanceSym(a) === sym);
+      if (!asset) return;
+      S.prices[asset.id] = {
+        usd:             parseFloat(t.lastPrice),
+        usd_24h_change:  parseFloat(t.priceChangePercent),
+      };
+    });
     S.lastUpd = new Date();
-    if (!S.initialized) { renderDash(); S.initialized = true; }
-    else scheduleUpdate();
-  } catch {
-    if (!S.initialized) {
-      document.getElementById('d-content').innerHTML = `
-        <div class="loading">
-          <div style="font-size:34px;">⚠️</div>
-          <div>Could not fetch prices. Check your connection.</div>
-          <button class="btn btn-primary" style="width:auto;padding:10px 24px;" onclick="fetchCoinGecko()">Retry</button>
-        </div>`;
+    if (!S.initialized && Object.keys(S.prices).length > 0) {
+      renderDash();
+      S.initialized = true;
     }
+  } catch {
+    // WS will populate prices shortly; show error only if both fail
+    setTimeout(() => {
+      if (!S.initialized) {
+        document.getElementById('d-content').innerHTML = `
+          <div class="loading">
+            <div style="font-size:34px;">⚠️</div>
+            <div>Could not connect to price feed.</div>
+            <button class="btn btn-primary" style="width:auto;padding:10px 24px;"
+                    onclick="fetchBinanceREST();openWS()">Retry</button>
+          </div>`;
+      }
+    }, 8000);
   }
 }
 
@@ -1029,9 +1039,9 @@ function openWS() {
 
   S.ws.onerror = () => {
     S.wsActive = false;
-    // Fall back to faster CoinGecko polling
+    // Fall back to polling Binance REST
     if (S.timer) clearInterval(S.timer);
-    S.timer = setInterval(fetchCoinGecko, 10000);
+    S.timer = setInterval(fetchBinanceREST, 5000);
   };
 }
 
