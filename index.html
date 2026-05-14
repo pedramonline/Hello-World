@@ -886,7 +886,7 @@ async function doSearch() {
     out.className = 'search-results';
     out.innerHTML = coins.map(c => `
       <div class="sresult" onclick="addCustom('${c.id}','${c.symbol.toUpperCase()}','${escQ(c.name)}','${c.large||c.thumb||''}')">
-        <img src="${c.thumb||\'\'}" width="26" height="26" style="border-radius:50%" onerror="this.style.display='none'">
+        <img src="${c.thumb||\''}" width="26" height="26" style="border-radius:50%" onerror="this.style.display='none'">
         <div>
           <div class="sresult-sym">${c.symbol.toUpperCase()}</div>
           <div class="sresult-name">${c.name}</div>
@@ -960,9 +960,12 @@ function step3Next() {
   stopRealtime();
   S.initialized = false;
 
-  // Fetch initial snapshot from Binance REST, open WS simultaneously
+  // Fetch snapshot from Binance REST + open WebSocket simultaneously
   fetchBinanceREST();
   openWS();
+
+  // Retry REST snapshot every 30s as backup
+  S.timer = setInterval(fetchBinanceREST, 30000);
 }
 
 function stopRealtime() {
@@ -970,7 +973,7 @@ function stopRealtime() {
   if (S.ws)    { S.wsActive = false; S.ws.close(); S.ws = null; }
 }
 
-// ─── BINANCE REST INITIAL SNAPSHOT ───────────────────────────────────────────
+// ─── BINANCE REST SNAPSHOT ────────────────────────────────────────────────────
 async function fetchBinanceREST() {
   const syms = S.selected.map(a => `"${binanceSym(a).toUpperCase()}"`).join(',');
   try {
@@ -982,28 +985,26 @@ async function fetchBinanceREST() {
       const asset = S.selected.find(a => binanceSym(a) === sym);
       if (!asset) return;
       S.prices[asset.id] = {
-        usd:             parseFloat(t.lastPrice),
-        usd_24h_change:  parseFloat(t.priceChangePercent),
+        usd:            parseFloat(t.lastPrice),
+        usd_24h_change: parseFloat(t.priceChangePercent),
       };
     });
     S.lastUpd = new Date();
     if (!S.initialized && Object.keys(S.prices).length > 0) {
-      renderDash();
-      S.initialized = true;
+      renderDash(); S.initialized = true;
+    } else if (S.initialized) {
+      scheduleUpdate();
     }
   } catch {
-    // WS will populate prices shortly; show error only if both fail
+    // WebSocket will populate prices; show error only if both fail after 10s
     setTimeout(() => {
-      if (!S.initialized) {
+      if (!S.initialized)
         document.getElementById('d-content').innerHTML = `
-          <div class="loading">
-            <div style="font-size:34px;">⚠️</div>
-            <div>Could not connect to price feed.</div>
-            <button class="btn btn-primary" style="width:auto;padding:10px 24px;"
-                    onclick="fetchBinanceREST();openWS()">Retry</button>
-          </div>`;
-      }
-    }, 8000);
+          <div class="loading"><div style="font-size:34px;">⚠️</div>
+          <div>Could not connect to price feed. Check your connection.</div>
+          <button class="btn btn-primary" style="width:auto;padding:10px 24px;"
+                  onclick="fetchBinanceREST();openWS()">Retry</button></div>`;
+    }, 10000);
   }
 }
 
@@ -1029,7 +1030,11 @@ function openWS() {
                               : (S.prices[asset.id]?.usd_24h_change ?? null);
       S.prices[asset.id] = { usd: price, usd_24h_change: chg24 };
       S.lastUpd = new Date();
-      if (S.initialized) scheduleUpdate();
+      if (!S.initialized && Object.keys(S.prices).length === S.selected.length) {
+        renderDash(); S.initialized = true;
+      } else if (S.initialized) {
+        scheduleUpdate();
+      }
     } catch {}
   };
 
@@ -1039,9 +1044,9 @@ function openWS() {
 
   S.ws.onerror = () => {
     S.wsActive = false;
-    // Fall back to polling Binance REST
+    // Fall back to faster CoinGecko polling
     if (S.timer) clearInterval(S.timer);
-    S.timer = setInterval(fetchBinanceREST, 5000);
+    S.timer = setInterval(fetchCoinGecko, 10000);
   };
 }
 
