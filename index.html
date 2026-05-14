@@ -406,9 +406,9 @@
       letter-spacing:.07em;
       margin-bottom:7px;
     }
-    .mval { font-size:26px; font-weight:900; letter-spacing:-.03em; }
+    .mval { font-size:26px; font-weight:900; letter-spacing:-.03em; font-variant-numeric:tabular-nums; white-space:nowrap; }
     .mval.xl { font-size:33px; }
-    .mchange { margin-top:5px; font-size:12.5px; font-weight:600; }
+    .mchange { margin-top:5px; font-size:12.5px; font-weight:600; white-space:nowrap; font-variant-numeric:tabular-nums; }
     .pos { color:var(--green); }
     .neg { color:var(--red); }
     .neu { color:var(--txt3); }
@@ -439,7 +439,7 @@
     .last-upd   { font-size:11px; color:var(--txt3); }
 
     /* ── HOLDINGS TABLE ── */
-    .htable { width:100%; border-collapse:collapse; }
+    .htable { width:100%; border-collapse:collapse; table-layout:fixed; }
     .htable th {
       padding:11px 16px;
       text-align:right;
@@ -449,13 +449,25 @@
       text-transform:uppercase;
       letter-spacing:.06em;
       background:var(--bg1);
+      white-space:nowrap;
     }
     .htable th:first-child { text-align:left; }
+    /* Fixed column widths prevent layout shift as numbers change */
+    .htable th:nth-child(1) { width:34%; }
+    .htable th:nth-child(2) { width:14%; }
+    .htable th:nth-child(3) { width:13%; }
+    .htable th:nth-child(4) { width:15%; }
+    .htable th:nth-child(5) { width:12%; }
+    .htable th:nth-child(6) { width:12%; }
     .htable td {
       padding:13px 16px;
       font-size:13.5px;
       text-align:right;
       border-bottom:1px solid var(--border);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      font-variant-numeric:tabular-nums;
     }
     .htable td:first-child { text-align:left; }
     .htable tr:last-child td { border-bottom:none; }
@@ -478,7 +490,7 @@
     .cbadge.neg { background:var(--rbg); color:var(--red); }
 
     .abar { height:3px; background:var(--bg1); border-radius:2px; margin-top:4px; }
-    .abar-fill { height:100%; border-radius:2px; transition:width .6s ease; }
+    .abar-fill { height:100%; border-radius:2px; }
 
     /* ── CHART PANEL ── */
     .chart-pad { padding:22px; display:flex; flex-direction:column; align-items:center; }
@@ -886,7 +898,7 @@ async function doSearch() {
     out.className = 'search-results';
     out.innerHTML = coins.map(c => `
       <div class="sresult" onclick="addCustom('${c.id}','${c.symbol.toUpperCase()}','${escQ(c.name)}','${c.large||c.thumb||''}')">
-        <img src="${c.thumb||\''}" width="26" height="26" style="border-radius:50%" onerror="this.style.display='none'">
+        <img src="${c.thumb||\'\'}" width="26" height="26" style="border-radius:50%" onerror="this.style.display='none'">
         <div>
           <div class="sresult-sym">${c.symbol.toUpperCase()}</div>
           <div class="sresult-name">${c.name}</div>
