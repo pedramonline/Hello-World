@@ -895,22 +895,30 @@ async function doSearch() {
       return;
     }
     out.className = 'search-results';
-    out.innerHTML = coins.map(c => `
-      <div class="sresult" onclick="addCustom('${c.id}','${c.symbol.toUpperCase()}','${escQ(c.name)}','${c.large||c.thumb||\'\'}')">
-        <img src="${c.thumb||\'\'}" width="26" height="26" style="border-radius:50%" onerror="this.style.display='none'">
-        <div>
-          <div class="sresult-sym">${c.symbol.toUpperCase()}</div>
-          <div class="sresult-name">${c.name}</div>
-        </div>
-        <div class="sresult-add">+ Add</div>
-      </div>
-    `).join('');
+    out.innerHTML = '';
+    coins.forEach(c => {
+      const img = c.large || c.thumb || '';
+      const row = document.createElement('div');
+      row.className = 'sresult';
+      const icon = document.createElement('img');
+      icon.src = c.thumb || '';
+      icon.width = 26; icon.height = 26;
+      icon.style.borderRadius = '50%';
+      icon.onerror = function() { this.style.display = 'none'; };
+      const info = document.createElement('div');
+      info.innerHTML = '<div class="sresult-sym">' + c.symbol.toUpperCase() + '</div>'
+        + '<div class="sresult-name">' + c.name + '</div>';
+      const add = document.createElement('div');
+      add.className = 'sresult-add';
+      add.textContent = '+ Add';
+      row.append(icon, info, add);
+      row.onclick = () => addCustom(c.id, c.symbol.toUpperCase(), c.name, img);
+      out.appendChild(row);
+    });
   } catch {
     out.innerHTML = '<div style="padding:10px 14px;color:#ef4444;font-size:13px;">Search failed — check your connection.</div>';
   }
 }
-
-function escQ(s) { return s.replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
 
 function addCustom(id, sym, name, img) {
   const out = document.getElementById('search-out');
@@ -971,7 +979,6 @@ function step3Next() {
   stopRealtime();
   S.initialized = false;
 
-  // Fetch initial snapshot from Binance REST, open WS simultaneously
   fetchBinanceREST();
   openWS();
 }
@@ -1054,7 +1061,6 @@ function openWS() {
   };
 }
 
-// Throttle DOM updates to one per animation frame
 function scheduleUpdate() {
   if (S.rafPending) return;
   S.rafPending = true;
