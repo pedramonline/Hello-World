@@ -768,7 +768,7 @@
      JAVASCRIPT
 ════════════════════════════════════════════ -->
 <script>
-// ─── PRESET ASSETS ─────────────────────────────────────────────────────────
+// ─── PRESET ASSETS ────────────────────────────────────────────────
 const PRESETS = [
   { id:'bitcoin',      sym:'BTC',  name:'Bitcoin',   img:'https://assets.coingecko.com/coins/images/1/small/bitcoin.png' },
   { id:'ethereum',     sym:'ETH',  name:'Ethereum',  img:'https://assets.coingecko.com/coins/images/279/small/ethereum.png' },
@@ -785,7 +785,7 @@ const COLORS = [
   '#14b8a6','#e879f9','#fb923c','#34d399','#60a5fa',
 ];
 
-// ─── BINANCE SYMBOL MAP ──────────────────────────────────────────────────────
+// ─── BINANCE SYMBOL MAP ──────────────────────────────────────────────────
 const BINANCE = {
   bitcoin:     'btcusdt',
   ethereum:    'ethusdt',
@@ -797,7 +797,7 @@ const BINANCE = {
 };
 function binanceSym(a) { return BINANCE[a.id] || `${a.sym.toLowerCase()}usdt`; }
 
-// ─── STATE ─────────────────────────────────────────────────────────────────
+// ─── STATE ──────────────────────────────────────────────────────────────────────
 const S = {
   name: '',
   selected: [],
@@ -812,14 +812,14 @@ const S = {
   rafPending: false,
 };
 
-// ─── NAVIGATION ─────────────────────────────────────────────────────────────
+// ─── NAVIGATION ───────────────────────────────────────────────────────────────────
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   window.scrollTo(0, 0);
 }
 
-// ─── STEP 1 ─────────────────────────────────────────────────────────────────
+// ─── STEP 1 ───────────────────────────────────────────────────────────────────────────
 function step1Next() {
   const v = document.getElementById('inp-name').value.trim();
   if (!v) { document.getElementById('inp-name').focus(); return; }
@@ -828,7 +828,7 @@ function step1Next() {
   showScreen('s-assets');
 }
 
-// ─── ASSET GRID ─────────────────────────────────────────────────────────────
+// ─── ASSET GRID ───────────────────────────────────────────────────────────────────
 function buildAssetGrid() {
   const grid = document.getElementById('asset-grid');
   const all = [
@@ -879,7 +879,7 @@ function updateSelCount() {
     n === 0 ? 'No assets selected' : `${n} asset${n > 1 ? 's' : ''} selected`;
 }
 
-// ─── CUSTOM SEARCH ──────────────────────────────────────────────────────────
+// ─── CUSTOM SEARCH ──────────────────────────────────────────────────────────────────
 async function doSearch() {
   const q = document.getElementById('custom-q').value.trim();
   if (!q) return;
@@ -933,7 +933,7 @@ function addCustom(id, sym, name, img) {
   buildAssetGrid();
 }
 
-// ─── STEP 2 ─────────────────────────────────────────────────────────────────
+// ─── STEP 2 ───────────────────────────────────────────────────────────────────────────
 function step2Next() {
   if (!S.selected.length) { alert('Please select at least one asset.'); return; }
 
@@ -961,7 +961,7 @@ function step2Next() {
   setTimeout(() => { const el = document.querySelector('.amount-input'); if (el) el.focus(); }, 80);
 }
 
-// ─── STEP 3 ─────────────────────────────────────────────────────────────────
+// ─── STEP 3 ───────────────────────────────────────────────────────────────────────────
 function step3Next() {
   S.amounts = {};
   let hasAny = false;
@@ -979,6 +979,7 @@ function step3Next() {
   stopRealtime();
   S.initialized = false;
 
+  // Fetch initial snapshot from Binance REST, open WS simultaneously
   fetchBinanceREST();
   openWS();
 }
@@ -988,7 +989,7 @@ function stopRealtime() {
   if (S.ws)    { S.wsActive = false; S.ws.close(); S.ws = null; }
 }
 
-// ─── BINANCE REST INITIAL SNAPSHOT ───────────────────────────────────────────
+// ─── BINANCE REST INITIAL SNAPSHOT ───────────────────────────────────────────────
 async function fetchBinanceREST() {
   const syms = S.selected.map(a => `"${binanceSym(a).toUpperCase()}"`).join(',');
   try {
@@ -1024,7 +1025,7 @@ async function fetchBinanceREST() {
   }
 }
 
-// ─── BINANCE WEBSOCKET ───────────────────────────────────────────────────────
+// ─── BINANCE WEBSOCKET ──────────────────────────────────────────────────────────────────────
 function openWS() {
   if (S.ws) { S.ws.close(); S.ws = null; }
   S.wsActive = true;
@@ -1061,13 +1062,14 @@ function openWS() {
   };
 }
 
+// Throttle DOM updates to one per animation frame
 function scheduleUpdate() {
   if (S.rafPending) return;
   S.rafPending = true;
   requestAnimationFrame(() => { S.rafPending = false; if (S.initialized) updateDash(); });
 }
 
-// ─── FORMAT HELPERS ──────────────────────────────────────────────────────────
+// ─── FORMAT HELPERS ────────────────────────────────────────────────────────────────────
 const usd = n => n.toLocaleString('en-US', { style:'currency', currency:'USD', minimumFractionDigits:2, maximumFractionDigits:2 });
 const pct = n => (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
 function fmtAmt(n) {
@@ -1077,7 +1079,7 @@ function fmtAmt(n) {
   return n.toLocaleString('en-US', { minimumFractionDigits:2, maximumFractionDigits:4 });
 }
 
-// ─── COMPUTE HOLDINGS ────────────────────────────────────────────────────────
+// ─── COMPUTE HOLDINGS ──────────────────────────────────────────────────────────────────
 function computeHoldings() {
   let totalNow = 0, total24 = 0;
   const rows = S.selected.map((a, i) => {
@@ -1098,7 +1100,7 @@ function computeHoldings() {
   return { rows, totalNow, totalChgPct, totalChgUSD };
 }
 
-// ─── INITIAL RENDER ──────────────────────────────────────────────────────────
+// ─── INITIAL RENDER ──────────────────────────────────────────────────────────────────────
 function renderDash() {
   const { rows, totalNow, totalChgPct, totalChgUSD } = computeHoldings();
   const updStr = S.lastUpd ? S.lastUpd.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit', second:'2-digit' }) : '';
@@ -1194,7 +1196,7 @@ function renderDash() {
   buildChart(rows, totalNow, true);
 }
 
-// ─── HOLDING ROW HTML ────────────────────────────────────────────────────────
+// ─── HOLDING ROW HTML ────────────────────────────────────────────────────────────────────
 function holdingRow(r, total) {
   const allocPct = total > 0 ? (r.value / total) * 100 : 0;
   const chgHTML = r.chg24 !== null
@@ -1222,7 +1224,7 @@ function holdingRow(r, total) {
     </tr>`;
 }
 
-// ─── LEGEND ITEM HTML ────────────────────────────────────────────────────────
+// ─── LEGEND ITEM HTML ────────────────────────────────────────────────────────────────────
 function legendItem(r, total) {
   const p = total > 0 ? (r.value / total * 100).toFixed(1) : '0.0';
   return `
@@ -1233,7 +1235,7 @@ function legendItem(r, total) {
     </div>`;
 }
 
-// ─── INCREMENTAL UPDATE ───────────────────────────────────────────────────────
+// ─── INCREMENTAL UPDATE ─────────────────────────────────────────────────────────────────────
 function updateDash() {
   const { rows, totalNow, totalChgPct, totalChgUSD } = computeHoldings();
   const updStr = S.lastUpd ? S.lastUpd.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit', second:'2-digit' }) : '';
@@ -1273,7 +1275,7 @@ function updateDash() {
 function setText(id, v) { const el = document.getElementById(id); if (el) el.textContent = v; }
 function setHTML(id, v) { const el = document.getElementById(id); if (el) el.innerHTML = v; }
 
-// ─── CHART ────────────────────────────────────────────────────────────────────
+// ─── CHART ──────────────────────────────────────────────────────────────────────────────────
 function buildChart(rows, total, animate) {
   const ctx = document.getElementById('pie-chart');
   if (!ctx) return;
@@ -1326,7 +1328,7 @@ function buildChart(rows, total, animate) {
   });
 }
 
-// ─── RESTART ─────────────────────────────────────────────────────────────────
+// ─── RESTART ─────────────────────────────────────────────────────────────────────────────────
 function restart() {
   stopRealtime();
   if (S.chart) { S.chart.destroy(); S.chart = null; }
