@@ -802,7 +802,7 @@ const S = {
   name: '',
   selected: [],
   amounts: {},
-  prices: {},     // { id: { usd, usd_24h_change } }
+  prices: {},
   ws: null,
   wsActive: false,
   timer: null,
@@ -896,7 +896,7 @@ async function doSearch() {
     }
     out.className = 'search-results';
     out.innerHTML = coins.map(c => `
-      <div class="sresult" onclick="addCustom('${c.id}','${c.symbol.toUpperCase()}','${escQ(c.name)}','${c.large||c.thumb||''}')">
+      <div class="sresult" onclick="addCustom('${c.id}','${c.symbol.toUpperCase()}','${escQ(c.name)}','${c.large||c.thumb||\'\'}')">
         <img src="${c.thumb||\'\'}" width="26" height="26" style="border-radius:50%" onerror="this.style.display='none'">
         <div>
           <div class="sresult-sym">${c.symbol.toUpperCase()}</div>
@@ -1003,7 +1003,6 @@ async function fetchBinanceREST() {
       S.initialized = true;
     }
   } catch {
-    // WS will populate prices shortly; show error only if both fail
     setTimeout(() => {
       if (!S.initialized) {
         document.getElementById('d-content').innerHTML = `
@@ -1050,7 +1049,6 @@ function openWS() {
 
   S.ws.onerror = () => {
     S.wsActive = false;
-    // Fall back to polling Binance REST
     if (S.timer) clearInterval(S.timer);
     S.timer = setInterval(fetchBinanceREST, 5000);
   };
