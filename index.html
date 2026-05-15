@@ -438,45 +438,45 @@
     .card-title { font-size:14px; font-weight:700; }
     .last-upd   { font-size:11px; color:var(--txt3); }
 
-    /* ── HOLDINGS TABLE ── */
-    .htable { width:100%; border-collapse:collapse; table-layout:fixed; }
-    .htable th:nth-child(1) { width:34%; }
-    .htable th:nth-child(2) { width:14%; }
-    .htable th:nth-child(3) { width:13%; }
-    .htable th:nth-child(4) { width:15%; }
-    .htable th:nth-child(5) { width:12%; }
-    .htable th:nth-child(6) { width:12%; }
-    .htable th {
-      padding:11px 16px;
-      text-align:right;
-      font-size:10.5px;
-      font-weight:700;
-      color:var(--txt3);
-      text-transform:uppercase;
-      letter-spacing:.06em;
-      background:var(--bg1);
-      white-space:nowrap;
+    /* ── HOLDING CARDS ── */
+    .hgrid {
+      display:grid;
+      grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
+      gap:10px;
+      padding:12px;
     }
-    .htable th:first-child { text-align:left; }
-    .htable td {
-      padding:13px 16px;
-      font-size:13.5px;
-      text-align:right;
-      border-bottom:1px solid var(--border);
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      font-variant-numeric:tabular-nums;
+    .hcard {
+      background:var(--bg0);
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:15px 16px;
+      transition:border-color .2s;
     }
-    .htable td:first-child { text-align:left; }
-    .htable tr:last-child td { border-bottom:none; }
-    .htable tr:hover td { background:rgba(255,255,255,.018); }
-
-    .hold-asset { display:flex; align-items:center; gap:11px; }
+    .hcard:hover { border-color:var(--bord2); }
+    .hcard-top {
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      margin-bottom:12px;
+    }
+    .hcard-asset { display:flex; align-items:center; gap:9px; }
     .himg { width:30px; height:30px; border-radius:50%; object-fit:cover; }
     .hsym  { font-size:13.5px; font-weight:700; }
     .hname { font-size:11px; color:var(--txt3); }
-
+    .sparkline { display:block; }
+    .hcard-price {
+      display:flex;
+      align-items:center;
+      gap:8px;
+      margin-bottom:11px;
+      flex-wrap:wrap;
+    }
+    .hcard-pval {
+      font-size:18px;
+      font-weight:800;
+      font-variant-numeric:tabular-nums;
+      letter-spacing:-.02em;
+    }
     .cbadge {
       display:inline-flex;
       align-items:center;
@@ -487,9 +487,40 @@
     }
     .cbadge.pos { background:var(--gbg); color:var(--green); }
     .cbadge.neg { background:var(--rbg); color:var(--red); }
-
-    .abar { height:3px; background:var(--bg1); border-radius:2px; margin-top:4px; }
-    .abar-fill { height:100%; border-radius:2px; }
+    .cbadge.neu { background:rgba(79,106,144,.12); color:var(--txt3); }
+    .hcard-meta {
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:8px 6px;
+      margin-bottom:10px;
+    }
+    .hstat-label {
+      font-size:9.5px;
+      font-weight:700;
+      color:var(--txt3);
+      text-transform:uppercase;
+      letter-spacing:.07em;
+      margin-bottom:2px;
+    }
+    .hstat-val {
+      font-size:12.5px;
+      font-weight:600;
+      font-variant-numeric:tabular-nums;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .hcard-alloc { display:flex; align-items:center; gap:8px; }
+    .hcard-abar { flex:1; height:4px; background:var(--bg2); border-radius:2px; overflow:hidden; }
+    .hcard-abar-fill { height:100%; border-radius:2px; }
+    .hcard-apct {
+      font-size:11px;
+      font-weight:700;
+      color:var(--txt2);
+      font-variant-numeric:tabular-nums;
+      min-width:36px;
+      text-align:right;
+    }
 
     /* ── CHART PANEL ── */
     .chart-pad { padding:22px; display:flex; flex-direction:column; align-items:center; }
@@ -533,10 +564,6 @@
     @keyframes spin { to { transform:rotate(360deg); } }
 
     hr.div { border:none; border-top:1px solid var(--border); margin:20px 0; }
-
-    /* ── TABLE SCROLL WRAPPER ── */
-    .htable-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
-    .htable { min-width:520px; }
 
     /* ── MOBILE ── */
     @media(max-width:640px) {
@@ -583,6 +610,10 @@
       .card { border-radius:12px; }
       .card-hd { padding:12px 14px; }
       .card-title { font-size:13px; }
+
+      /* Holding cards: single column on mobile */
+      .hgrid { grid-template-columns:1fr; gap:8px; padding:10px; }
+      .hcard-pval { font-size:16px; }
 
       /* Chart */
       .chart-wrap { width:160px; height:160px; }
@@ -1149,28 +1180,14 @@ function renderDash() {
       <!-- Main grid -->
       <div class="cgrid">
 
-        <!-- Holdings table -->
+        <!-- Holdings cards -->
         <div class="card">
           <div class="card-hd">
             <span class="card-title">Holdings</span>
             <span class="last-upd" id="m-upd">Updated ${updStr}</span>
           </div>
-          <div class="htable-wrap">
-            <table class="htable">
-              <thead>
-                <tr>
-                  <th>Asset</th>
-                  <th>Price</th>
-                  <th>24h Change</th>
-                  <th>Amount</th>
-                  <th>Value</th>
-                  <th>Allocation</th>
-                </tr>
-              </thead>
-              <tbody id="hold-body">
-                ${rows.map(r => holdingRow(r, totalNow)).join('')}
-              </tbody>
-            </table>
+          <div class="hgrid">
+            ${rows.map(r => holdingCard(r, totalNow)).join('')}
           </div>
         </div>
 
@@ -1194,34 +1211,97 @@ function renderDash() {
   `;
 
   buildChart(rows, totalNow, true);
+  fetchSparklines(rows);
 }
 
-// ─── HOLDING ROW HTML ────────────────────────────────────────────────────────────────────
-function holdingRow(r, total) {
+// ─── HOLDING CARD HTML ────────────────────────────────────────────────────────────────────
+function holdingCard(r, total) {
   const allocPct = total > 0 ? (r.value / total) * 100 : 0;
-  const chgHTML = r.chg24 !== null
-    ? `<span class="cbadge ${r.chg24 >= 0 ? 'pos' : 'neg'}">${pct(r.chg24)}</span>`
-    : `<span style="color:#4f6a90">—</span>`;
+  const chgClass = r.chg24 !== null ? (r.chg24 >= 0 ? 'pos' : 'neg') : 'neu';
+  const chgText  = r.chg24 !== null ? pct(r.chg24) : '—';
   return `
-    <tr id="row-${r.id}">
-      <td>
-        <div class="hold-asset">
+    <div class="hcard" id="hcard-${r.id}">
+      <div class="hcard-top">
+        <div class="hcard-asset">
           <img src="${r.img}" alt="${r.sym}" class="himg" onerror="this.style.opacity='.3'">
           <div>
             <div class="hsym">${r.sym}</div>
             <div class="hname">${r.name}</div>
           </div>
         </div>
-      </td>
-      <td id="p-${r.id}"><strong>${usd(r.price)}</strong></td>
-      <td id="c-${r.id}">${chgHTML}</td>
-      <td>${fmtAmt(r.amount)}&thinsp;${r.sym}</td>
-      <td id="v-${r.id}"><strong>${usd(r.value)}</strong></td>
-      <td>
-        <div style="font-size:12px;text-align:right;" id="a-${r.id}">${allocPct.toFixed(1)}%</div>
-        <div class="abar"><div class="abar-fill" id="ab-${r.id}" style="width:${allocPct}%;background:${r.color}"></div></div>
-      </td>
-    </tr>`;
+        <canvas id="spark-${r.id}" width="110" height="38" class="sparkline"></canvas>
+      </div>
+      <div class="hcard-price">
+        <span class="hcard-pval" id="p-${r.id}">${usd(r.price)}</span>
+        <span class="cbadge ${chgClass}" id="c-${r.id}">${chgText}</span>
+      </div>
+      <div class="hcard-meta">
+        <div>
+          <div class="hstat-label">Holdings</div>
+          <div class="hstat-val">${fmtAmt(r.amount)} ${r.sym}</div>
+        </div>
+        <div>
+          <div class="hstat-label">Value</div>
+          <div class="hstat-val" id="v-${r.id}">${usd(r.value)}</div>
+        </div>
+      </div>
+      <div class="hcard-alloc">
+        <div class="hcard-abar">
+          <div class="hcard-abar-fill" id="ab-${r.id}" style="width:${allocPct}%;background:${r.color}"></div>
+        </div>
+        <div class="hcard-apct" id="a-${r.id}">${allocPct.toFixed(1)}%</div>
+      </div>
+    </div>`;
+}
+
+// ─── SPARKLINES ───────────────────────────────────────────────────────────────────────────────
+async function fetchSparklines(rows) {
+  for (const r of rows) {
+    try {
+      const sym = binanceSym(r).toUpperCase();
+      const res = await fetch('https://api.binance.com/api/v3/klines?symbol=' + sym + '&interval=1h&limit=24');
+      if (!res.ok) continue;
+      const klines = await res.json();
+      const closes = klines.map(function(k) { return parseFloat(k[4]); });
+      if (closes.length > 1) drawSparkline('spark-' + r.id, closes, r.chg24 === null || r.chg24 >= 0);
+    } catch(e) {}
+  }
+}
+
+function drawSparkline(id, prices, isUp) {
+  const canvas = document.getElementById(id);
+  if (!canvas || prices.length < 2) return;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const w = canvas.clientWidth || 110;
+  const h = canvas.clientHeight || 38;
+  canvas.width = w * dpr;
+  canvas.height = h * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  const color = isUp ? '#10b981' : '#ef4444';
+  const mn = Math.min.apply(null, prices);
+  const mx = Math.max.apply(null, prices);
+  const range = mx - mn || 1;
+  const pad = 3;
+  const xStep = (w - 1) / (prices.length - 1);
+  ctx.beginPath();
+  prices.forEach(function(p, i) {
+    const x = i * xStep;
+    const y = pad + (1 - (p - mn) / range) * (h - pad * 2);
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5;
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+  ctx.lineTo((prices.length - 1) * xStep, h);
+  ctx.lineTo(0, h);
+  ctx.closePath();
+  const grad = ctx.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, isUp ? 'rgba(16,185,129,.28)' : 'rgba(239,68,68,.28)');
+  grad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = grad;
+  ctx.fill();
 }
 
 // ─── LEGEND ITEM HTML ────────────────────────────────────────────────────────────────────
@@ -1257,16 +1337,17 @@ function updateDash() {
 
   rows.forEach(r => {
     const allocPct = totalNow > 0 ? (r.value / totalNow) * 100 : 0;
-    const chgHTML = r.chg24 !== null
-      ? `<span class="cbadge ${r.chg24 >= 0 ? 'pos' : 'neg'}">${pct(r.chg24)}</span>`
-      : `<span style="color:#4f6a90">—</span>`;
-    setHTML(`p-${r.id}`,  `<strong>${usd(r.price)}</strong>`);
-    setHTML(`c-${r.id}`,  chgHTML);
-    setHTML(`v-${r.id}`,  `<strong>${usd(r.value)}</strong>`);
-    setText(`a-${r.id}`,  `${allocPct.toFixed(1)}%`);
-    const bar = document.getElementById(`ab-${r.id}`);
-    if (bar) bar.style.width = `${allocPct}%`;
-    setText(`lp-${r.id}`, `${allocPct.toFixed(1)}%`);
+    setText('p-' + r.id, usd(r.price));
+    const cEl = document.getElementById('c-' + r.id);
+    if (cEl) {
+      cEl.className = 'cbadge ' + (r.chg24 !== null ? (r.chg24 >= 0 ? 'pos' : 'neg') : 'neu');
+      cEl.textContent = r.chg24 !== null ? pct(r.chg24) : '—';
+    }
+    setText('v-' + r.id, usd(r.value));
+    setText('a-' + r.id, allocPct.toFixed(1) + '%');
+    const bar = document.getElementById('ab-' + r.id);
+    if (bar) bar.style.width = allocPct + '%';
+    setText('lp-' + r.id, allocPct.toFixed(1) + '%');
   });
 
   buildChart(rows, totalNow, false);
